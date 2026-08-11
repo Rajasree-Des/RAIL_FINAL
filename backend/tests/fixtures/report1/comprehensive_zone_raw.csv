@@ -1,0 +1,9 @@
+S.No.,Organisation,Opening Balance,Received,% Share,Closed,Closing Balance,% Disposal,Avg. Disposal Time,Avg. Rating,Avg. Pendency Time,Forwarded,Avg. FRT
+1,Northern Railway,27,1265,13.57,1228,64,95.05,0:42,Satisfactory,0:23,1357,0:18
+2,East Central Railway,9,766,8.22,722,53,93.16,0:22,Satisfactory,0:13,960,0:08
+3,North Eastern Railway,7,760,8.15,753,14,98.17,0:17,Satisfactory,0:17,496,0:07
+4,Irctc-Catering,5,710,7.62,679,36,94.97,1:12,Satisfactory,0:24,446,-
+5,Central Railway,8,694,7.45,662,40,94.30,0:21,Satisfactory,0:11,807,0:08
+14,Irctc-Online,4,287,3.08,288,3,98.97,0:53,UnSatisfactory,0:54,33,-
+17,South Central Railway,4,232,2.49,219,17,92.80,0:21,Satisfactory,0:12,236,0:07
+20,Total,,9321,,9031,,,,,,,

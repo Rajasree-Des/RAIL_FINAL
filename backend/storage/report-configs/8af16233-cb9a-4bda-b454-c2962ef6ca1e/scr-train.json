@@ -1,0 +1,38 @@
+{
+  "selected_column_ids": [
+    "scr-train.sno",
+    "scr-train.complaint_ref_no",
+    "scr-train.user_id",
+    "scr-train.created_on",
+    "scr-train.comp_type_name",
+    "scr-train.sub_type_name",
+    "scr-train.train_station",
+    "scr-train.zone_code",
+    "scr-train.div_code",
+    "scr-train.train_name_for_report",
+    "scr-train.feedback_remark",
+    "scr-train.complaint_desc",
+    "scr-train.remarks"
+  ],
+  "column_order": [
+    "scr-train.sno",
+    "scr-train.complaint_ref_no",
+    "scr-train.user_id",
+    "scr-train.created_on",
+    "scr-train.comp_type_name",
+    "scr-train.sub_type_name",
+    "scr-train.train_station",
+    "scr-train.zone_code",
+    "scr-train.div_code",
+    "scr-train.train_name_for_report",
+    "scr-train.feedback_remark",
+    "scr-train.complaint_desc",
+    "scr-train.remarks"
+  ],
+  "export_format": "xlsx",
+  "config_overrides": {
+    "zone": "scr",
+    "sortBy": "count"
+  },
+  "filter_conditions": []
+}

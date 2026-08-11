@@ -1,0 +1,7 @@
+Ref. No.,Mode,Train/Station,Type,Sub Type,Department,Status,Zone,Div,feedbackRemark,complaintDesc,remarks,userId
+REF101,Station,Secunderabad Station,Cleanliness,Platform,Operations,Pending,SC,HYB,Platform dirty,Garbage on platform,Needs cleaning,sm_sc_hyb
+REF102,Station,Hyderabad Station,Facilities,Waiting Room,Station Master,Resolved,SC,HYB,Improved,Room was crowded,Resolved,sm_sc_hyb
+REF103,Station,Vijayawada Station,Security,Unauthorized Entry,RPF,In Progress,SC,BZA,Under review,Security breach,Investigating,rpf_sc_bza
+REF104,Station,Guntakal Station,Drinking Water,Not Available,Operations,Pending,SC,GTL,No water,Water cooler broken,Pending ops,ops_sc_gtl
+REF105,Station,Nampally Station,Toilets,Not Clean,Housekeeping,Resolved,SC,HYB,Clean now,Toilets dirty,Resolved,hk_sc_hyb
+REF106,Station,South Central Railway Station,Parking,Overcrowded,Traffic,Pending,SC,SC,Parking issue,Too many vehicles,Review traffic,traffic_sc_sc

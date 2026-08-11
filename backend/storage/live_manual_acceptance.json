@@ -1,0 +1,80 @@
+[
+  {
+    "slug": "report1",
+    "run_id": "613f55f4-d431-4c92-81e0-38da739c09d6",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/0c67a3ae-92c8-486f-983e-1da6fef5d84e/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/4409016a-d726-462f-811d-945a555b41f1/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/4409016a-d726-462f-811d-945a555b41f1/preview",
+    "selected_column_ids": [
+      "report1.source_a.sno",
+      "report1.source_a.organisation"
+    ]
+  },
+  {
+    "slug": "division",
+    "run_id": "3f4e48be-c03b-47d5-8d38-ff9139df958a",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/e426225c-2b43-4c34-81cc-7d834c9718c3/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/c35acac6-0018-4642-9861-0ee67e6451b4/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/c35acac6-0018-4642-9861-0ee67e6451b4/preview",
+    "selected_column_ids": [
+      "division.source_a.sno",
+      "division.source_a.division"
+    ]
+  },
+  {
+    "slug": "train-no",
+    "run_id": "bc482028-fa57-4435-8dff-80961ddc403b",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/c499f0c2-663e-4c4f-9704-f32a2f3819ab/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/f5120b55-3134-4887-9951-759cef218600/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/f5120b55-3134-4887-9951-759cef218600/preview",
+    "selected_column_ids": [
+      "train-no.sno",
+      "train-no.train_name"
+    ]
+  },
+  {
+    "slug": "types",
+    "run_id": "b52693ab-4881-41e6-b7ca-d7b140e33723",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/e53d343e-5f53-4eef-a537-f581a1f3d1d1/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/692ef677-f81e-4d9e-abfc-a2c016874bff/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/692ef677-f81e-4d9e-abfc-a2c016874bff/preview",
+    "selected_column_ids": [
+      "types.sno",
+      "types.train_name"
+    ]
+  },
+  {
+    "slug": "scr-train",
+    "run_id": "9e2b67d9-65a3-43bc-8d07-68effdc82427",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/d02aa6ac-2cad-4586-8942-4288514e0079/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/499e643a-6961-4c74-b19d-98cfb7d6fc76/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/499e643a-6961-4c74-b19d-98cfb7d6fc76/preview",
+    "selected_column_ids": [
+      "scr-train.sno",
+      "scr-train.complaint_ref_no"
+    ]
+  },
+  {
+    "slug": "scr-station",
+    "run_id": "d25fcbe4-7b3c-4c63-9b1b-535c88d00a67",
+    "status": "Completed",
+    "error": null,
+    "excel_download_url": "/api/v1/automation/artifacts/1ebbeb20-87a2-4239-95e1-b4e38fc1d09f/download",
+    "pdf_download_url": "/api/v1/automation/artifacts/a2dae7ab-1553-47ec-8e11-dad146ee2ca8/download",
+    "pdf_preview_url": "/api/v1/automation/artifacts/a2dae7ab-1553-47ec-8e11-dad146ee2ca8/preview",
+    "selected_column_ids": [
+      "scr-station.sno",
+      "scr-station.complaint_ref_no"
+    ]
+  }
+]

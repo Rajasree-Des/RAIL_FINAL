@@ -1,0 +1,1874 @@
+RAILMADAD AUTOMATION SPECIFICATION
+PART 1 — REPORTS 1, 2 AND 3
+=================================
+
+PURPOSE
+-------
+
+This file is the source of truth for implementing RailMadad automation.
+
+Cursor/Codex must read this file completely before modifying code.
+
+Do not shorten, reorder, simplify, or reinterpret the workflow.
+
+Do not replace explicit steps with generic steps such as:
+
+- apply the filters
+- process the data
+- merge the reports
+- generate output
+
+Every operation described below must be implemented and verified separately.
+
+If the live RailMadad portal differs from this specification, stop and report the exact difference instead of guessing.
+
+The entire workflow must begin only when the user clicks:
+
+"Generate Today's Reports"
+
+from the localhost frontend.
+
+
+============================================================
+SECTION 1 — APPLICATION ENTRY FLOW
+============================================================
+
+1. The user starts Chrome with remote debugging enabled.
+
+2. The user manually logs in to RailMadad.
+
+3. The user leaves the authenticated RailMadad MIS tab open.
+
+4. The user opens the localhost application.
+
+5. The user clicks:
+
+   "Generate Today's Reports"
+
+6. The frontend calls the existing backend automation endpoint.
+
+7. The backend calls:
+
+   AutomationService.start()
+
+8. Playwright connects to the existing Chrome instance through CDP.
+
+9. Playwright must not launch another Chrome window.
+
+10. Playwright must not attempt automatic RailMadad login.
+
+11. Playwright must inspect all browser contexts and open tabs.
+
+12. Playwright must identify the authenticated RailMadad MIS tab.
+
+13. Prefer the tab whose URL contains:
+
+    /rmmis/admin/home.jsp
+
+14. Do not select a tab using tab number or tab position.
+
+15. If multiple RailMadad tabs exist, choose the authenticated MIS/admin tab.
+
+16. Bring the selected MIS tab to the foreground.
+
+17. Verify that the user is authenticated by checking one or more of:
+
+    - MIS Reports menu exists
+    - Logout button exists
+    - report dashboard exists
+    - URL is not the login page
+
+18. If the user is not logged in:
+
+    - stop the workflow
+    - do not click anything
+    - do not navigate
+    - do not open another tab
+    - return this error code:
+
+      RAILMADAD_NOT_LOGGED_IN
+
+19. The frontend must show:
+
+    Title:
+    RailMadad Login Required
+
+    Message:
+    Please log in to RailMadad in Chrome before generating reports.
+
+20. After the user logs in and clicks Generate again, the normal workflow must continue.
+
+
+============================================================
+SECTION 2 — GENERAL MIS NAVIGATION RULES
+============================================================
+
+1. The left navigation initially may show only top-level menu options.
+
+2. Before opening a numbered report, locate:
+
+   MIS Reports
+
+3. Check whether the numbered MIS Reports submenu is expanded.
+
+4. If the numbered submenu is collapsed:
+
+   - click MIS Reports once
+   - wait until the numbered report list becomes visible
+
+5. If it is already expanded:
+
+   - do not click it again
+   - continue directly
+
+6. Verify the target numbered report item is visible before clicking.
+
+7. If the report item is below the visible sidebar area:
+
+   - scroll only inside the sidebar
+   - do not scroll the entire browser page unnecessarily
+
+8. Do not use hardcoded screen coordinates.
+
+9. Use reliable Playwright locators based on:
+
+   - visible text
+   - accessible role
+   - id
+   - name
+   - stable CSS
+
+10. Avoid XPath unless no stable alternative exists.
+
+11. If the submenu does not expand:
+
+    - retry once
+    - if it still fails, stop that report with NavigationError
+
+12. After clicking a report item, verify:
+
+    - expected page heading
+    - expected MIS report URL
+    - expected page form or table exists
+
+
+============================================================
+SECTION 3 — GLOBAL TABLE SORTING RULE
+============================================================
+
+This rule applies to every RailMadad report used in this specification.
+
+1. After clicking Submit, wait until the report result table loads.
+
+2. Verify that the result table contains at least one data row.
+
+3. Locate the column header named:
+
+   Received
+
+4. The final sorting order must be descending.
+
+5. To produce descending order, click the Received column header exactly twice.
+
+6. Perform the clicks as follows:
+
+   a. locate the correct Received header
+
+   b. wait until it is visible
+
+   c. wait until it is enabled
+
+   d. click Received once
+
+   e. wait until the table order or sort state changes
+
+   f. click Received a second time
+
+   g. wait until the table becomes stable
+
+7. Do not perform a Playwright double-click event.
+
+8. Perform two separate click actions.
+
+9. Log:
+
+   received_header_found
+   received_click_1
+   received_click_2
+   received_sort_verified
+
+10. Verify descending order numerically.
+
+11. Read the first several non-empty Received values.
+
+12. Confirm that each value is greater than or equal to the next value.
+
+13. Do not continue if descending order is not verified.
+
+14. If verification fails:
+
+    - repeat the full two-click sequence once
+    - verify again
+
+15. If it still fails:
+
+    - save a screenshot
+    - save page HTML
+    - mark that report failed
+    - do not silently continue with unsorted data
+
+
+============================================================
+SECTION 4 — GLOBAL HTML TABLE EXTRACTION RULES
+============================================================
+
+1. The HTML result table is the source of data.
+
+2. Do not use RailMadad PDF as the ingestion source.
+
+3. Do not use OCR.
+
+4. Do not parse the PDF.
+
+5. Do not use clipboard copy/paste automation.
+
+6. Do not use screenshots as data.
+
+7. After the table loads and sorting completes:
+
+   - read every header
+   - read every row
+   - read every cell
+
+8. Preserve the displayed column order.
+
+9. Trim leading and trailing whitespace.
+
+10. Collapse repeated spaces for matching purposes.
+
+11. Preserve the original visible cell text for final output.
+
+12. If the table contains pagination:
+
+    - detect all pages
+    - extract every page
+    - avoid duplicate rows
+    - preserve page order
+
+13. If the table uses DataTables pagination:
+
+    - continue until Next is disabled
+    - collect all rows
+
+14. Exclude the portal total row from Top-N selection.
+
+15. Keep the total row separately when totals are required.
+
+16. Verify:
+
+    - row count greater than zero
+    - column count greater than zero
+    - required headers exist
+
+17. Convert the extracted table into a pandas DataFrame.
+
+18. Save raw extracted data inside project storage.
+
+19. Do not save extracted files into Windows Downloads.
+
+
+============================================================
+SECTION 5 — GLOBAL STORAGE RULES
+============================================================
+
+Use the following project directories.
+
+Raw extracted data:
+
+backend/storage/raw/<YYYY-MM-DD>/
+
+Processed data:
+
+backend/storage/processed/<YYYY-MM-DD>/
+
+Final Excel reports:
+
+backend/storage/output/excel/<YYYY-MM-DD>/
+
+Final PDF reports:
+
+backend/storage/output/pdf/<YYYY-MM-DD>/
+
+Debug screenshots and HTML:
+
+backend/storage/debug/<YYYY-MM-DD>/
+
+Rules:
+
+1. Create missing directories automatically.
+
+2. Never use the Windows Downloads folder.
+
+3. Never overwrite an existing file.
+
+4. Include date, timestamp, or run id where needed.
+
+5. Validate every saved output:
+
+   - file exists
+   - file size is greater than zero
+   - expected extension is present
+
+6. No paid API must be required.
+
+7. No cloud AI service must be called automatically.
+
+
+============================================================
+SECTION 6 — GLOBAL SOUTH CENTRAL RAILWAY HIGHLIGHTING RULE
+============================================================
+
+This rule applies to EVERY final report, spreadsheet, table, worksheet, and generated PDF.
+
+1. Inspect every final output row.
+
+2. Search all cells in the row for the text:
+
+   South Central Railway
+
+3. Matching must be:
+
+   - case-insensitive
+   - whitespace-normalized
+   - valid even if the text appears as part of a longer value
+
+4. If "South Central Railway" appears anywhere in a row:
+
+   - highlight the ENTIRE row
+   - use a YELLOW background/fill
+   - use BLACK text/font
+
+5. The yellow fill and black text must apply to:
+
+   - every visible cell in the row
+   - every hidden cell in the row
+   - all merged/output columns belonging to that row
+
+6. Do not highlight only the cell containing "South Central Railway".
+
+7. Do not change only the font colour.
+
+8. The complete row must have:
+
+   Background colour:
+   Yellow
+
+   Text colour:
+   Black
+
+9. Apply this rule after:
+
+   - merging
+   - sorting
+   - filtering
+   - Top-N selection
+   - final row ordering
+
+10. Apply the rule before saving the final Excel file.
+
+11. Preserve the same yellow-row and black-text formatting in the generated PDF.
+
+12. Do not apply this formatting to raw CSV or Parquet files because those formats do not support colours.
+
+13. If the same row contains:
+
+    - hyperlinks
+    - numbers
+    - percentages
+    - blank cells
+
+    retain their values and number formats.
+
+14. Change only:
+
+    - row background to yellow
+    - row text to black
+
+15. The highlighting rule must be implemented once as a shared reusable formatting function.
+
+16. Do not duplicate separate South Central Railway formatting code inside each report.
+
+17. Suggested shared function:
+
+    highlight_south_central_railway_rows(worksheet_or_table)
+
+18. The shared function must scan:
+
+    - every used row
+    - every used column
+    - visible columns
+    - hidden columns
+
+19. Log:
+
+    scr_row_detected
+    scr_row_highlighted
+    scr_highlight_count
+
+20. After formatting, verify that every row containing South Central Railway has:
+
+    - yellow fill across the complete row
+    - black text across the complete row
+
+21. If any matching row is only partially highlighted:
+
+    - fail report verification
+    - save the generated Excel for debugging
+    - report the affected row number
+
+
+################################################################
+REPORT 1
+ZONE WISE COMPLAINTS AND FEEDBACK COMPARISON
+################################################################
+
+
+============================================================
+REPORT 1 — FINAL PURPOSE
+============================================================
+
+Report 1 is created by combining two different RailMadad reports:
+
+SOURCE A:
+Comprehensive (with drill down)
+
+SOURCE B:
+Feedback (with drill down)
+
+The two reports must be placed side by side and aligned by Organisation.
+
+The final report title must follow:
+
+Rail Madad Report No 1 - Zone Wise Complaints & Feedback Report on date <REPORT_DATE>
+
+
+============================================================
+REPORT 1 — SOURCE A
+COMPREHENSIVE WITH DRILL DOWN
+============================================================
+
+STEP A1
+
+Activate the authenticated RailMadad MIS tab.
+
+STEP A2
+
+Locate the MIS Reports menu.
+
+STEP A3
+
+Expand MIS Reports if it is collapsed.
+
+STEP A4
+
+Click:
+
+1) Comprehensive (with drill down)
+
+STEP A5
+
+Verify the visible heading is:
+
+Comprehensive (with drill down)
+
+STEP A6
+
+Verify the correct form is visible.
+
+STEP A7
+
+Use the following filter values, matching the workflow screenshot:
+
+Date Range:
+Previous Day
+
+Excluding Refund Cases:
+YES
+
+Excluding Inquiry Cases:
+YES
+
+Zone:
+ALL
+
+Division:
+ALL
+
+Department:
+ALL
+
+Mode:
+ALL
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+View:
+Zone Wise
+
+Excluding Assistance Cases:
+Yes
+
+Channel Type:
+ALL
+
+Train Type:
+ALL
+
+Coach Type:
+None selected
+
+STEP A8
+
+If a field already contains the required value, do not change it unnecessarily.
+
+STEP A9
+
+Before clicking Submit:
+
+- read back each selected value
+- log each label and selected value
+
+STEP A10
+
+Verify every mandatory field is populated.
+
+STEP A11
+
+Click Submit exactly once.
+
+STEP A12
+
+Wait until the Comprehensive result table is visible.
+
+STEP A13
+
+Verify the result table contains:
+
+- S.No.
+- Organisation
+- Received
+
+STEP A14
+
+Locate the Received column.
+
+STEP A15
+
+Click Received once.
+
+STEP A16
+
+Wait until the table changes.
+
+STEP A17
+
+Click Received a second time.
+
+STEP A18
+
+Wait until the table becomes stable.
+
+STEP A19
+
+Verify Received is descending.
+
+STEP A20
+
+Extract the complete Comprehensive table from all pages.
+
+STEP A21
+
+Preserve the Source A row order after descending sorting.
+
+STEP A22
+
+Keep the following fields if present:
+
+- S.No.
+- Organisation
+- Opening Balance
+- Received
+- % Share
+- Closed
+- Closing Balance
+- % Disposal
+- Avg Disposal Time
+- Avg Rating
+- Avg Pendency Time
+- Forwarded
+- Avg FRT
+- any additional live-table columns
+
+STEP A23
+
+Separate the final total row from normal organisation rows.
+
+STEP A24
+
+Save the raw data as:
+
+report1_comprehensive_zone_raw.csv
+
+report1_comprehensive_zone_raw.parquet
+
+STEP A25
+
+Do not export PDF at this point.
+
+STEP A26
+
+Do not close the RailMadad tab.
+
+
+============================================================
+REPORT 1 — SOURCE B
+FEEDBACK WITH DRILL DOWN
+============================================================
+
+STEP B1
+
+Return focus to the RailMadad MIS page.
+
+STEP B2
+
+Locate MIS Reports.
+
+STEP B3
+
+Expand MIS Reports if collapsed.
+
+STEP B4
+
+Click:
+
+6) Feedback (with drill down)
+
+STEP B5
+
+Verify the visible heading is:
+
+Feedback (with drill down)
+
+STEP B6
+
+Use the following filter values shown in the workflow:
+
+Date Range:
+Previous Day
+
+Excluding Refund Cases:
+YES
+
+Excluding Inquiry Cases:
+YES
+
+Zone:
+ALL
+
+Division:
+ALL
+
+Department:
+ALL
+
+Mode:
+ALL
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+View:
+Zone Wise / Dept. Wise
+
+Excluding Assistance Cases:
+Yes
+
+STEP B7
+
+For Report 1, the required table is the Zone Wise Report.
+
+STEP B8
+
+Do not accidentally extract the Department Wise table that may also appear below it.
+
+STEP B9
+
+Before clicking Submit:
+
+- read back all selected filter values
+- log every field and selected value
+
+STEP B10
+
+Click Submit exactly once.
+
+STEP B11
+
+Wait until the Zone Wise feedback table loads.
+
+STEP B12
+
+Verify the table contains:
+
+- S.No.
+- Organisation
+- Feedback Received
+- % Feedback
+- Excellent
+- Satisfactory
+- Unsatisfactory
+- % Unsatisfactory
+
+STEP B13
+
+If the Feedback Received/Received column is sortable and the documented sorting rule applies:
+
+- click it once
+- wait for update
+- click it a second time
+- verify descending order
+
+STEP B14
+
+Extract the complete Zone Wise feedback table.
+
+STEP B15
+
+Do not extract the Department Wise table.
+
+STEP B16
+
+Separate the total row.
+
+STEP B17
+
+Save:
+
+report1_feedback_zone_raw.csv
+
+report1_feedback_zone_raw.parquet
+
+
+============================================================
+REPORT 1 — ORGANISATION NORMALIZATION
+============================================================
+
+1. Source A is the master dataset.
+
+2. Source A descending row order must remain the final row order.
+
+3. Normalize Organisation values only for matching.
+
+4. Matching normalization must:
+
+   - trim leading spaces
+   - trim trailing spaces
+   - collapse repeated spaces
+   - compare case-insensitively
+
+5. Preserve the original Organisation text in the final output.
+
+6. Do not merge unrelated organisations because they have similar names.
+
+7. Create a stable Source A row index before merging.
+
+
+============================================================
+REPORT 1 — IRCTC SPECIAL RULE
+============================================================
+
+This rule is mandatory.
+
+1. Source A contains two separate organisation rows:
+
+   IRCTC-Catering
+
+   IRCTC-Online
+
+2. Source B contains only one combined organisation row:
+
+   IRCTC
+
+3. Do not duplicate Source B IRCTC feedback values across both Source A rows.
+
+4. Match the single Source B IRCTC record to the first applicable IRCTC row from Source A.
+
+5. Keep the second Source A IRCTC row.
+
+6. For the second Source A IRCTC row:
+
+   - insert blank cells for every Source B feedback field
+
+7. The blank cells must be inserted beside the second IRCTC row.
+
+8. Do not remove that row.
+
+9. Do not shift later organisations upward.
+
+10. Do not misalign following rows.
+
+11. Preserve all Source A values for both:
+
+    IRCTC-Catering
+    IRCTC-Online
+
+12. This must reproduce the blank-space alignment shown in the workflow image.
+
+
+============================================================
+REPORT 1 — MERGE PROCESS
+============================================================
+
+1. Use Source A Comprehensive as the left/master table.
+
+2. Add Source B Feedback fields to the right side.
+
+3. Match rows by normalized Organisation name.
+
+4. Preserve every Source A organisation row.
+
+5. Keep Source A descending order.
+
+6. If Source B has no matching organisation:
+
+   - leave Source B-side cells blank
+
+7. Never shift another organisation into that blank row.
+
+8. If Source B contains an organisation not present in Source A:
+
+   - do not silently drop it
+   - log it as unmatched
+   - append it only according to the existing merge policy
+   - never disturb Source A descending order
+
+9. Add totals after the organisation rows.
+
+10. Validate:
+
+    - final Received total equals Source A total
+    - final Feedback Received total equals Source B total
+
+11. Save merged data as:
+
+    report1_zone_complaints_feedback_merged.csv
+
+    report1_zone_complaints_feedback_merged.parquet
+
+
+============================================================
+REPORT 1 — FINAL COLUMN STRUCTURE
+============================================================
+
+Construct the intermediate side-by-side spreadsheet with:
+
+SOURCE A columns first
+
+then
+
+SOURCE B columns
+
+The intermediate file may contain duplicate Source B:
+
+- S.No.
+- Organisation
+
+After the merge, hide these spreadsheet columns:
+
+C
+
+G
+
+J through O inclusive
+
+Do not delete these columns if the workbook structure depends on them.
+
+The final visible report must contain the complaint and feedback comparison fields shown in the workflow, including:
+
+- S.No.
+- Organisation
+- Received
+- % Share
+- Closed
+- % Disposal
+- Avg Disposal Time
+- Feedback Received
+- % Feedback
+- Excellent
+- Satisfactory
+- Unsatisfactory
+- % Unsatisfactory
+
+
+============================================================
+REPORT 1 — EXCEL FORMATTING
+============================================================
+
+1. Add a merged title row.
+
+2. Title:
+
+   Rail Madad Report No 1 - Zone Wise Complaints & Feedback Report on date <REPORT_DATE>
+
+3. Apply borders to the entire table.
+
+4. Keep numeric values as numeric values.
+
+5. Keep percentage fields consistently formatted.
+
+6. Apply readable column widths.
+
+7. Do not make columns unnecessarily wide.
+
+8. Search every final output row for:
+
+   South Central Railway
+
+9. If South Central Railway appears anywhere in a row:
+
+   - apply yellow background to the entire row
+   - apply black text to the entire row
+
+10. Apply the yellow background and black text across:
+
+    - all visible cells
+    - all hidden cells
+    - all Source A columns
+    - all Source B columns
+
+11. Do not highlight only the Organisation cell.
+
+12. Make the totals row visually distinct.
+
+13. Save:
+
+    Rail_Madad_Report_1_Zone_Wise_Complaints_Feedback_<REPORT_DATE>.xlsx
+
+
+============================================================
+REPORT 1 — PDF GENERATION
+============================================================
+
+1. Generate the PDF from the final formatted application output.
+
+2. Do not ingest from RailMadad PDF.
+
+3. Do not parse RailMadad PDF.
+
+4. The final PDF must use the same visible columns as the final spreadsheet.
+
+5. Preserve:
+
+   - report title
+   - date
+   - table borders
+   - South Central Railway yellow-row highlighting
+   - South Central Railway black text
+   - totals row
+
+6. Fit the table legibly across one or more pages.
+
+7. Save:
+
+   Rail_Madad_Report_1_Zone_Wise_Complaints_Feedback_<REPORT_DATE>.pdf
+
+
+============================================================
+REPORT 1 — VERIFICATION GATE
+============================================================
+
+Report 1 is complete only if every required check passes.
+
+[ ] RailMadad authenticated session detected
+
+[ ] MIS Reports expanded
+
+[ ] Comprehensive page opened
+
+[ ] Comprehensive filter values verified
+
+[ ] Comprehensive Submit clicked
+
+[ ] Comprehensive table loaded
+
+[ ] Comprehensive Received clicked exactly twice
+
+[ ] Comprehensive descending order verified
+
+[ ] Complete Comprehensive table extracted
+
+[ ] Feedback page opened
+
+[ ] Feedback filter values verified
+
+[ ] Feedback Submit clicked
+
+[ ] Correct Zone Wise table identified
+
+[ ] Department Wise table not mistakenly used
+
+[ ] Complete Zone Wise feedback table extracted
+
+[ ] Source A total captured
+
+[ ] Source B total captured
+
+[ ] Source A used as master order
+
+[ ] Organisations matched using normalized names
+
+[ ] IRCTC-Catering retained
+
+[ ] IRCTC-Online retained
+
+[ ] Source B IRCTC used only once
+
+[ ] Blank feedback cells inserted for the second IRCTC row
+
+[ ] No later row shifted
+
+[ ] Columns C hidden
+
+[ ] Column G hidden
+
+[ ] Columns J through O hidden
+
+[ ] Every row containing South Central Railway has yellow background across the entire row
+
+[ ] Every highlighted South Central Railway row uses black text in every cell
+
+[ ] South Central Railway highlighting includes visible and hidden columns
+
+[ ] South Central Railway highlighting is preserved in the Excel output
+
+[ ] South Central Railway highlighting is preserved in the PDF output
+
+[ ] Final Excel created
+
+[ ] Final PDF created
+
+[ ] Raw files saved inside project storage
+
+[ ] Merged files saved inside project storage
+
+[ ] No file saved to Windows Downloads
+
+[ ] No paid API used
+
+If any mandatory check fails, Report 1 must not be marked successful.
+
+
+################################################################
+REPORT 2
+DIVISION WISE BOTTOM 25
+################################################################
+
+
+============================================================
+REPORT 2 — FINAL PURPOSE
+============================================================
+
+Create the final:
+
+Division Wise Complaints & Feedback Report - Bottom 25 Divisions
+
+The final title must follow:
+
+Rail Madad Report No 2 - Division Wise Complaints & Feedback Report - Bottom 25 Divisions on date <REPORT_DATE>
+
+
+============================================================
+REPORT 2 — COMPREHENSIVE DIVISION WISE
+============================================================
+
+STEP A1
+
+Expand MIS Reports if collapsed.
+
+STEP A2
+
+Open:
+
+1) Comprehensive (with drill down)
+
+STEP A3
+
+Verify the page heading.
+
+STEP A4
+
+Set:
+
+View:
+Division Wise
+
+STEP A5
+
+Keep the other workflow/default filters as:
+
+Date Range:
+Previous Day
+
+Excluding Refund Cases:
+YES
+
+Excluding Inquiry Cases:
+YES
+
+Zone:
+ALL
+
+Division:
+ALL
+
+Department:
+ALL
+
+Mode:
+ALL
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+Excluding Assistance Cases:
+Yes
+
+Channel Type:
+ALL
+
+Train Type:
+ALL
+
+Coach Type:
+None selected
+
+STEP A6
+
+Read back all selected filter values.
+
+STEP A7
+
+Log every field and selected value.
+
+STEP A8
+
+Click Submit exactly once.
+
+STEP A9
+
+Wait for the Division Wise result table.
+
+STEP A10
+
+Verify it contains:
+
+- Division or Organisation
+- Received
+
+STEP A11
+
+Click Received once.
+
+STEP A12
+
+Wait for the table to update.
+
+STEP A13
+
+Click Received a second time.
+
+STEP A14
+
+Verify descending Received order.
+
+STEP A15
+
+Extract the complete table from all pages.
+
+STEP A16
+
+Separate the total row.
+
+STEP A17
+
+Exclude the total row from ranking.
+
+STEP A18
+
+Take exactly the first 25 data rows.
+
+STEP A19
+
+If fewer than 25 exist:
+
+- take all available
+- log the shortage
+
+STEP A20
+
+Preserve the displayed order.
+
+STEP A21
+
+Save:
+
+report2_division_comprehensive_raw.csv
+
+report2_division_top25.csv
+
+report2_division_top25.parquet
+
+
+============================================================
+REPORT 2 — FEEDBACK DATA REQUIRED FOR FINAL OUTPUT
+============================================================
+
+The final reference report contains feedback fields.
+
+Required feedback fields include:
+
+- Feedback Received
+- % Feedback
+- Excellent
+- Satisfactory
+- Unsatisfactory
+- % Unsatisfactory
+
+Therefore:
+
+1. Open:
+
+   6) Feedback (with drill down)
+
+2. Use the same report date.
+
+3. Use Division Wise feedback view.
+
+4. Use general scope:
+
+   Zone = ALL
+
+5. Keep corresponding default filters consistent with the Comprehensive report.
+
+6. Click Submit.
+
+7. Wait for the Division Wise feedback table.
+
+8. Extract the complete table.
+
+9. Align feedback data with the Comprehensive Top 25 divisions.
+
+10. Match using normalized division/organisation name.
+
+11. Preserve Comprehensive Top 25 order.
+
+12. If a selected division has no feedback match:
+
+    - leave feedback cells blank
+
+13. Do not replace a missing match with another similar division.
+
+14. Save:
+
+    report2_division_feedback_raw.csv
+
+IMPORTANT:
+
+If the live Feedback page does not provide a Division Wise result matching the final reference output:
+
+- stop Report 2
+- report the mismatch
+- do not invent another data source
+
+
+============================================================
+REPORT 2 — FINAL MERGE
+============================================================
+
+1. Use the Top 25 Comprehensive divisions as master rows.
+
+2. Append matching feedback fields.
+
+3. Preserve exactly 25 rows when at least 25 exist.
+
+4. Add an All Divisions total row.
+
+5. Use source totals where available.
+
+6. Hide spreadsheet columns:
+
+   C
+
+   G
+
+   H
+
+   J through O inclusive
+
+7. Do not delete hidden columns if layout/calculation depends on them.
+
+8. The visible final columns must match the reference output, including:
+
+   - S.No.
+   - Division
+   - Received
+   - % Share
+   - Closed
+   - Avg Disposal Time
+   - Feedback Received
+   - % Feedback
+   - Excellent
+   - Satisfactory
+   - Unsatisfactory
+   - % Unsatisfactory
+
+9. Search every final row for:
+
+   South Central Railway
+
+10. If South Central Railway appears anywhere in a row:
+
+    - use yellow background across the entire row
+    - use black text across the entire row
+
+11. Apply the formatting across:
+
+    - visible columns
+    - hidden columns
+    - complaint columns
+    - feedback columns
+
+12. Apply title, date, borders and readable formatting.
+
+13. Preserve the same South Central Railway yellow-row and black-text formatting in the PDF.
+
+14. Save:
+
+    Rail_Madad_Report_2_Division_Wise_Bottom_25_<REPORT_DATE>.xlsx
+
+    Rail_Madad_Report_2_Division_Wise_Bottom_25_<REPORT_DATE>.pdf
+
+
+============================================================
+REPORT 2 — VERIFICATION GATE
+============================================================
+
+[ ] Comprehensive page opened
+
+[ ] View set to Division Wise
+
+[ ] Filter values verified
+
+[ ] Submit clicked
+
+[ ] Division table loaded
+
+[ ] Received clicked exactly twice
+
+[ ] Descending order verified
+
+[ ] Complete table extracted
+
+[ ] Total row excluded before ranking
+
+[ ] Top 25 selected
+
+[ ] Feedback Division Wise table obtained
+
+[ ] Feedback rows aligned by division name
+
+[ ] Missing feedback represented by blanks
+
+[ ] No row shifting occurred
+
+[ ] Column C hidden
+
+[ ] Column G hidden
+
+[ ] Column H hidden
+
+[ ] Columns J through O hidden
+
+[ ] Every row containing South Central Railway has yellow background across the entire row
+
+[ ] Every highlighted South Central Railway row uses black text in every cell
+
+[ ] South Central Railway highlighting includes visible and hidden columns
+
+[ ] South Central Railway highlighting is preserved in the Excel output
+
+[ ] South Central Railway highlighting is preserved in the PDF output
+
+[ ] Excel generated
+
+[ ] PDF generated
+
+[ ] No files saved to Windows Downloads
+
+[ ] No paid API used
+
+
+################################################################
+REPORT 3
+TOP 20 TRAINS HAVING MAXIMUM GRIEVANCES
+################################################################
+
+
+============================================================
+REPORT 3 — FINAL PURPOSE
+============================================================
+
+Create the final Top 20 Trains report from the Zone/Train Type Wise report.
+
+The final report must be ranked using Received descending.
+
+Expected title:
+
+Rail Madad Report No 3 - 20 Trains having maximum grievances on date <REPORT_DATE>
+
+
+============================================================
+REPORT 3 — NAVIGATION
+============================================================
+
+STEP A1
+
+Expand MIS Reports if collapsed.
+
+STEP A2
+
+Scroll inside the MIS Reports submenu.
+
+STEP A3
+
+Locate:
+
+10) Zone/Train Type wise Report
+
+STEP A4
+
+Click:
+
+10) Zone/Train Type wise Report
+
+STEP A5
+
+Verify the visible heading is:
+
+Zone/Train Type wise Report
+
+
+============================================================
+REPORT 3 — FILTERS
+============================================================
+
+Set:
+
+Date Range:
+Previous Day
+
+Zone:
+ALL
+
+Division:
+ALL
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+Department:
+ALL
+
+View:
+Train No. Wise
+
+Coach Type:
+None selected
+
+Excluding Assistance Cases:
+Yes
+
+Rules:
+
+1. Read back every filter value.
+
+2. Log every label and selected value.
+
+3. Do not continue until:
+
+   View = Train No. Wise
+
+4. Click Submit exactly once.
+
+
+============================================================
+REPORT 3 — RESULT TABLE
+============================================================
+
+1. Wait for the train-wise result table.
+
+2. Verify the table contains:
+
+   - Train No.
+   - Train Name
+   - Owning Zone
+   - Owning Division
+   - Received
+
+3. Locate Received.
+
+4. Click Received once.
+
+5. Wait for the table to update.
+
+6. Click Received a second time.
+
+7. Verify descending order numerically.
+
+8. Extract every row from all pages.
+
+9. Exclude total/footer rows.
+
+10. Select exactly the first 20 trains.
+
+11. If fewer than 20 trains exist:
+
+    - select all available
+    - log the shortage
+
+12. Preserve ranking order.
+
+13. Save:
+
+    report3_trainwise_raw.csv
+
+    report3_top20_trains.csv
+
+    report3_top20_trains.parquet
+
+
+============================================================
+REPORT 3 — FINAL OUTPUT STRUCTURE
+============================================================
+
+Create the final table with columns:
+
+- S.No.
+- Train No.
+- Train Name
+- Owning Zone
+- Owning Division
+- Received
+
+Rules:
+
+1. Renumber S.No. from 1 to 20.
+
+2. Preserve Train No. as text where required.
+
+3. Do not remove leading zeros.
+
+4. Apply borders.
+
+5. Use readable column widths.
+
+6. Add title and report date.
+
+7. Search every final row for:
+
+   South Central Railway
+
+8. If South Central Railway appears anywhere in:
+
+   - Owning Zone
+   - Owning Division
+   - Train Name
+   - any other row cell
+
+   apply:
+
+   - yellow background across the complete row
+   - black text across the complete row
+
+9. Do not highlight only the Owning Zone or Owning Division cell.
+
+10. Apply formatting across all output columns.
+
+11. Preserve the same yellow-row and black-text formatting in the PDF.
+
+12. Save:
+
+   Rail_Madad_Report_3_Top_20_Trains_<REPORT_DATE>.xlsx
+
+   Rail_Madad_Report_3_Top_20_Trains_<REPORT_DATE>.pdf
+
+
+============================================================
+REPORT 3 — VERIFICATION GATE
+============================================================
+
+[ ] MIS Reports expanded
+
+[ ] Sidebar scrolled internally
+
+[ ] Report 10 found
+
+[ ] Zone/Train Type Wise page opened
+
+[ ] View set to Train No. Wise
+
+[ ] All filter values verified
+
+[ ] Submit clicked
+
+[ ] Train-wise table loaded
+
+[ ] Received clicked exactly twice
+
+[ ] Descending Received order verified
+
+[ ] All pages extracted
+
+[ ] Total/footer rows excluded
+
+[ ] Top 20 selected
+
+[ ] Required columns present
+
+[ ] Train numbers preserved correctly
+
+[ ] Every row containing South Central Railway has yellow background across the entire row
+
+[ ] Every highlighted South Central Railway row uses black text in every cell
+
+[ ] South Central Railway highlighting includes every output column
+
+[ ] South Central Railway highlighting is preserved in the Excel output
+
+[ ] South Central Railway highlighting is preserved in the PDF output
+
+[ ] Excel generated
+
+[ ] PDF generated
+
+[ ] No Windows Downloads usage
+
+[ ] No paid API used
+
+
+============================================================
+SECTION 7 — EXECUTION ORDER
+============================================================
+
+The reports must execute in this order:
+
+1. Report 1
+
+2. Report 2
+
+3. Report 3
+
+After each report:
+
+1. Run its verification gate.
+
+2. Save success/failure state.
+
+3. Save row counts.
+
+4. Save output paths.
+
+5. Save warnings.
+
+6. Save screenshots and HTML for failures.
+
+Default behavior:
+
+- if one report fails, log the failure
+- continue to the next report
+- return partial success at the end
+
+Authentication failure is the exception:
+
+- authentication failure stops all reports
+
+
+============================================================
+SECTION 8 — ERROR HANDLING
+============================================================
+
+1. Never expose passwords.
+
+2. Never log cookies.
+
+3. Never log session tokens.
+
+4. Never log RailMadad credentials.
+
+5. Save a screenshot when a mandatory step fails.
+
+6. Save page HTML when navigation, sorting, or extraction fails.
+
+7. Use clear error types:
+
+   AuthenticationError
+   NavigationError
+   FilterError
+   SortError
+   ExtractionError
+   MergeError
+   OutputGenerationError
+   FormattingError
+
+8. PDF failure must not delete valid:
+
+   - CSV
+   - Parquet
+   - Excel
+
+9. Do not mark a report successful when its verification gate fails.
+
+10. If a South Central Railway row is not fully formatted:
+
+    - raise FormattingError
+    - include the affected row number
+    - save the workbook for debugging
+    - do not mark the report successful
+
+
+============================================================
+SECTION 9 — CURSOR/CODEX IMPLEMENTATION RULES
+============================================================
+
+Cursor/Codex must:
+
+1. Read this file fully before changing code.
+
+2. Treat this file as the source of truth.
+
+3. Inspect the current codebase first.
+
+4. Map every requirement to an existing file/function.
+
+5. Identify:
+
+   - already implemented behavior
+   - missing behavior
+   - conflicting behavior
+
+6. Avoid duplicate services.
+
+7. Preserve the existing:
+
+   - React frontend
+   - FastAPI backend
+   - authentication
+   - Playwright CDP connection
+   - AutomationService
+   - processing pipeline
+   - storage structure
+
+8. Make the smallest safe code changes.
+
+9. Implement the South Central Railway row formatting once as a shared reusable function.
+
+10. Do not duplicate South Central Railway formatting logic separately in each report.
+
+11. Implement Report 1 first.
+
+12. Stop after Report 1 verification.
+
+13. Do not begin Report 2 until Report 1 passes.
+
+14. Do not begin Report 3 until Report 2 passes.
+
+15. After every report, return:
+
+    - files modified
+    - functions added
+    - selectors used
+    - filters applied
+    - extracted row count
+    - output paths
+    - South Central Railway rows detected
+    - South Central Railway rows highlighted
+    - verification evidence
+    - remaining blockers
+
+16. Do not introduce paid APIs.
+
+17. Do not require mandatory external cloud services.
+
+
+============================================================
+SECTION 10 — FINAL GLOBAL VERIFICATION
+============================================================
+
+The Reports 1–3 implementation is complete only when:
+
+[ ] Generate Today's Reports starts the workflow from localhost
+
+[ ] Existing authenticated RailMadad session is reused
+
+[ ] No second browser is opened
+
+[ ] MIS Reports navigation works from collapsed and expanded states
+
+[ ] Report 1 completes fully
+
+[ ] Report 2 completes fully
+
+[ ] Report 3 completes fully
+
+[ ] Every required Received column is clicked exactly twice
+
+[ ] Every required descending order is numerically verified
+
+[ ] HTML tables are used as the data source
+
+[ ] PDFs are not used for ingestion
+
+[ ] No OCR is used
+
+[ ] No clipboard automation is used
+
+[ ] No file is saved to Windows Downloads
+
+[ ] All outputs are saved under backend/storage
+
+[ ] Every row containing South Central Railway is fully yellow
+
+[ ] Every yellow South Central Railway row has black text
+
+[ ] South Central Railway formatting covers visible and hidden columns
+
+[ ] South Central Railway formatting is present in all Excel outputs
+
+[ ] South Central Railway formatting is present in all PDF outputs
+
+[ ] No mandatory paid API is used
+
+[ ] Existing frontend and backend functionality remains unaffected

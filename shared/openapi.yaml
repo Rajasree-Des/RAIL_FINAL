@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  title: Railway Report Automation Platform API
+  version: 1.0.0
+  description: |
+    Contract between Frontend, Backend, Report Processing Engine, and Business Rule Engine.
+    Automation Engine consumes download endpoints independently.
+
+servers:
+  - url: http://127.0.0.1:8000/api/v1
+    description: Backend API (development)
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  service:
+                    type: string
+
+  /workflows:
+    get:
+      tags: [workflows]
+      summary: List all configured workflows
+      responses:
+        "200":
+          description: Workflow list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowListResponse"
+
+  /workflows/{workflowId}:
+    get:
+      tags: [workflows]
+      summary: Get workflow configuration by ID
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Workflow configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Workflow"
+        "404":
+          description: Workflow not found
+
+components:
+  schemas:
+    SettingOption:
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+
+    WorkflowSetting:
+      type: object
+      required: [id, label, type]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
+        placeholder:
+          type: string
+          nullable: true
+        default_value:
+          nullable: true
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/SettingOption"
+        help_text:
+          type: string
+          nullable: true
+
+    ColumnMapping:
+      type: object
+      required: [key, label, type]
+      properties:
+        key:
+          type: string
+        label:
+          type: string
+        type:
+          type: string
+        required:
+          type: boolean
+        source_column:
+          type: string
+          nullable: true
+
+    BusinessRule:
+      type: object
+      required: [id, name, rule_type, expression]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        rule_type:
+          type: string
+        expression:
+          type: string
+        severity:
+          type: string
+        enabled:
+          type: boolean
+
+    ReportTemplate:
+      type: object
+      required: [id, name, template_type, content, output_format]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        template_type:
+          type: string
+        content:
+          type: string
+        output_format:
+          type: string
+
+    Workflow:
+      type: object
+      required: [id, name, order, description, variant, icon]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        order:
+          type: integer
+        description:
+          type: string
+        variant:
+          type: string
+          enum: [merge, report, summary]
+        icon:
+          type: string
+        upload_label:
+          type: string
+          nullable: true
+        report_source_id:
+          type: string
+          nullable: true
+        accepted_files:
+          type: array
+          items:
+            type: string
+        settings:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowSetting"
+        preview_columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ColumnMapping"
+        business_rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessRule"
+        templates:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReportTemplate"
+
+    WorkflowListResponse:
+      type: object
+      required: [workflows]
+      properties:
+        workflows:
+          type: array
+          items:
+            $ref: "#/components/schemas/Workflow"

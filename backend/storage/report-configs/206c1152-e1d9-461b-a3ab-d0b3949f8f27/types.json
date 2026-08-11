@@ -1,0 +1,42 @@
+{
+  "selected_column_ids": [
+    "types.sno",
+    "types.train_name",
+    "types.owning_zone",
+    "types.owning_division",
+    "types.train_no",
+    "types.received",
+    "types.percent_share",
+    "types.closed",
+    "types.percent_closed",
+    "types.pending",
+    "types.average_rating"
+  ],
+  "column_order": [
+    "types.sno",
+    "types.train_name",
+    "types.owning_zone",
+    "types.owning_division",
+    "types.train_no",
+    "types.received",
+    "types.percent_share",
+    "types.closed",
+    "types.percent_closed",
+    "types.pending",
+    "types.average_rating"
+  ],
+  "export_format": "xlsx",
+  "config_overrides": {
+    "topCount": 10,
+    "sortBy": "count"
+  },
+  "filter_conditions": [],
+  "default_selected_column_ids": [
+    "types.sno",
+    "types.train_name",
+    "types.owning_zone",
+    "types.owning_division",
+    "types.train_no",
+    "types.received"
+  ]
+}

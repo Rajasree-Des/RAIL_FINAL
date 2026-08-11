@@ -1,0 +1,42 @@
+{
+  "selected_column_ids": [
+    "train-no.sno",
+    "train-no.train_no",
+    "train-no.train_name",
+    "train-no.owning_zone",
+    "train-no.owning_division",
+    "train-no.received",
+    "train-no.percent_share",
+    "train-no.closed",
+    "train-no.percent_closed",
+    "train-no.pending",
+    "train-no.average_rating"
+  ],
+  "column_order": [
+    "train-no.sno",
+    "train-no.train_no",
+    "train-no.train_name",
+    "train-no.owning_zone",
+    "train-no.owning_division",
+    "train-no.received",
+    "train-no.percent_share",
+    "train-no.closed",
+    "train-no.percent_closed",
+    "train-no.pending",
+    "train-no.average_rating"
+  ],
+  "export_format": "xlsx",
+  "config_overrides": {
+    "topCount": 20,
+    "sortBy": "count"
+  },
+  "filter_conditions": [],
+  "default_selected_column_ids": [
+    "train-no.sno",
+    "train-no.train_no",
+    "train-no.train_name",
+    "train-no.owning_zone",
+    "train-no.owning_division",
+    "train-no.received"
+  ]
+}

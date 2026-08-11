@@ -1,0 +1,36 @@
+{
+  "selected_column_ids": [
+    "report1.source_a.sno",
+    "report1.source_a.organisation",
+    "report1.source_a.received",
+    "report1.source_a.percent_share",
+    "report1.source_a.closed",
+    "report1.source_a.avg_disposal_time",
+    "report1.source_b.feedback_received",
+    "report1.source_b.percent_feedback",
+    "report1.source_b.excellent",
+    "report1.source_b.satisfactory",
+    "report1.source_b.unsatisfactory",
+    "report1.source_b.percent_unsatisfactory"
+  ],
+  "column_order": [
+    "report1.source_a.sno",
+    "report1.source_a.organisation",
+    "report1.source_a.received",
+    "report1.source_a.percent_share",
+    "report1.source_a.closed",
+    "report1.source_a.avg_disposal_time",
+    "report1.source_b.feedback_received",
+    "report1.source_b.percent_feedback",
+    "report1.source_b.excellent",
+    "report1.source_b.satisfactory",
+    "report1.source_b.unsatisfactory",
+    "report1.source_b.percent_unsatisfactory"
+  ],
+  "export_format": "xlsx",
+  "config_overrides": {
+    "division": "all",
+    "reportType": "complaints"
+  },
+  "filter_conditions": []
+}

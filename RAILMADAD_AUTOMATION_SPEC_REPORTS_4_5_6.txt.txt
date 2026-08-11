@@ -1,0 +1,2726 @@
+RAILMADAD AUTOMATION SPECIFICATION
+PART 2 — REPORTS 4, 5 AND 6
+=================================
+
+PURPOSE
+-------
+
+This file continues:
+
+RAILMADAD_AUTOMATION_SPEC_REPORTS_1_2_3.txt
+
+It contains the complete workflow requirements for:
+
+- Report 4
+- Report 5
+- Report 6
+
+Cursor/Codex must read both specification files completely before changing code.
+
+This specification is the source of truth.
+
+Do not:
+
+- shorten the workflow
+- simplify the workflow
+- reorder workflow steps
+- skip verification steps
+- guess missing selectors
+- invent spreadsheet formulas
+- hardcode example values from screenshots
+- use PDF as the source of report data
+- replace exact report logic with generic extraction code
+
+Every operation described below must be implemented and verified separately.
+
+The workflow continues from the existing authenticated RailMadad MIS session.
+
+The existing React frontend, FastAPI backend, authentication, Playwright CDP connection, AutomationService, file-storage system and already working Reports 1–3 must not be broken.
+
+
+============================================================
+SECTION 1 — RULES INHERITED FROM PART 1
+============================================================
+
+All global requirements from the Reports 1–3 specification continue to apply.
+
+These include:
+
+1. The user manually logs in to RailMadad.
+
+2. Playwright connects to the already-open Chrome instance using CDP.
+
+3. Playwright must not launch another browser.
+
+4. Playwright must not perform automatic login.
+
+5. The workflow starts from the localhost button:
+
+   Generate Today's Reports
+
+6. The authenticated MIS/admin tab must be discovered by URL and page state.
+
+7. The MIS Reports sidebar must be expanded before choosing a numbered report.
+
+8. Sidebar scrolling must happen inside the sidebar.
+
+9. Hardcoded screen coordinates must not be used.
+
+10. HTML tables are the source of data.
+
+11. PDF files are archive/output files only.
+
+12. OCR must not be used.
+
+13. Clipboard copy/paste automation must not be used.
+
+14. Every required Received or Feedback Received table must be sorted in descending order.
+
+15. The required descending sort is performed using two separate clicks on the appropriate received-count header.
+
+16. Every sort must be numerically verified.
+
+17. Every table page must be extracted.
+
+18. Total/footer rows must not be treated as normal data rows.
+
+19. All files must be stored inside backend/storage.
+
+20. Nothing must be saved to the Windows Downloads folder.
+
+21. No mandatory paid API or cloud service may be introduced.
+
+22. Every row containing South Central Railway must have:
+
+    - yellow background across the entire row
+    - black text across the entire row
+
+23. The South Central Railway formatting must be preserved in:
+
+    - Excel
+    - PDF
+
+24. The South Central Railway formatting must cover:
+
+    - every visible cell
+    - every hidden cell
+    - every blank cell belonging to that row
+    - every column in the final report table
+
+
+============================================================
+SECTION 2 — SOURCE DOCUMENT DISCREPANCY RULE
+============================================================
+
+The source workflow contains some visible numbering and wording inconsistencies.
+
+Cursor/Codex must not silently use these inconsistencies to change report logic.
+
+Known inconsistency 1:
+
+The written workflow labels the cause-wise Top 10 report as:
+
+Report 4
+
+However, the example output screenshot displays the title:
+
+Rail Madad Report No 5 - Cause wise Bottom 10 Trains on date
+
+Known inconsistency 2:
+
+The written steps require:
+
+- sort Received descending
+- take the first 10 trains
+
+The individual section headings in the example output say:
+
+10 trains having maximum grievances
+
+However, the main example title says:
+
+Bottom 10 Trains
+
+Required implementation rule:
+
+1. The selection logic must follow the written workflow:
+
+   - sort Received descending
+   - take the first 10 rows
+
+2. Therefore, the result contains trains with the maximum number of grievances for each selected type.
+
+3. Do not reverse the order to produce the numerically lowest ten trains.
+
+4. Keep internal workflow naming as:
+
+   Report 4 — Cause-wise Top 10 Trains
+
+5. Keep the final displayed title configurable.
+
+6. Do not use the screenshot report number to control the workflow logic.
+
+Known inconsistency 3:
+
+The same or similar final output screenshot appears in the workflow for Reports 5 and 6.
+
+Required implementation rule:
+
+1. Report 5 must be generated using:
+
+   Mode = Train
+
+2. Report 6 must be generated using:
+
+   Mode = Station
+
+3. Data from the Train workflow and Station workflow must not be mixed accidentally.
+
+4. Each report must be identifiable by:
+
+   - mode
+   - output filename
+   - metadata
+   - title
+   - source row count
+
+5. If a shared final template is used for both reports, the report mode must be passed as an explicit parameter.
+
+
+============================================================
+SECTION 3 — SHARED RECEIVED-SORTING RULE
+============================================================
+
+This rule applies to Reports 4, 5 and 6.
+
+1. Click Submit before attempting to sort.
+
+2. Wait for the correct result table to load.
+
+3. Identify the received-count column in the correct table.
+
+Depending on the report, the header may be:
+
+- Received
+- Feedback Received
+
+4. Use the header belonging to the current result table.
+
+5. Do not select a similarly named column from another table on the same page.
+
+6. Perform two separate click actions:
+
+   a. click the received-count header once
+
+   b. wait for the table to update
+
+   c. click the same header a second time
+
+   d. wait for the table to become stable
+
+7. Do not use Playwright dblclick().
+
+8. Read the first several non-empty values.
+
+9. Parse the values as numbers.
+
+10. Verify:
+
+    value[0] >= value[1] >= value[2] ...
+
+11. If descending order is not verified:
+
+    - retry the complete two-click sequence once
+
+12. If the second attempt fails:
+
+    - save screenshot
+    - save page HTML
+    - raise SortError
+    - mark the current report or type as failed
+
+13. Do not continue with unsorted data.
+
+
+============================================================
+SECTION 4 — GLOBAL SOUTH CENTRAL RAILWAY FORMATTING
+============================================================
+
+This rule applies to every Report 4, Report 5 and Report 6 final output.
+
+1. Inspect every final table row.
+
+2. Search every cell in the row for:
+
+   South Central Railway
+
+3. Matching must be:
+
+   - case-insensitive
+   - whitespace-normalized
+   - valid when the phrase appears inside a longer value
+
+4. If the phrase appears anywhere in a row:
+
+   - apply yellow fill to the entire row
+   - apply black font to the entire row
+
+5. Do not highlight only the cell containing the phrase.
+
+6. Do not highlight only the Owning Zone field.
+
+7. Do not highlight only the Zone field.
+
+8. Apply the yellow fill and black font to:
+
+   - all visible columns
+   - all hidden columns
+   - all blank cells inside the table width
+   - all complaint fields
+   - all feedback fields
+   - all remarks fields
+
+9. Apply the formatting after final sorting, filtering, Top-N selection, merging and row ordering.
+
+10. Apply the formatting before saving Excel.
+
+11. Preserve the same formatting in PDF.
+
+12. Raw CSV and Parquet files do not require colours.
+
+13. Implement this as one shared reusable function.
+
+Suggested function:
+
+highlight_south_central_railway_rows(
+    worksheet,
+    first_data_row,
+    last_data_row,
+    first_column,
+    last_column
+)
+
+14. Log:
+
+    scr_row_detected
+    scr_row_number
+    scr_row_highlighted
+    scr_highlight_count
+
+15. Verification must check every cell in each matching row.
+
+16. A matching row fails verification if:
+
+    - one cell does not have yellow fill
+    - one cell does not have black text
+    - the PDF loses the yellow background
+    - the PDF changes the text to an unreadable colour
+
+
+################################################################
+REPORT 4
+CAUSE-WISE TOP 10 TRAINS
+################################################################
+
+
+============================================================
+REPORT 4 — FINAL PURPOSE
+============================================================
+
+Generate one cause-wise train report containing seven separate sections.
+
+Each section represents one complaint Type.
+
+For every Type:
+
+1. Open the Zone/Train Type Wise report.
+
+2. Use Train No. Wise view.
+
+3. Select the required Type.
+
+4. Submit.
+
+5. Sort Received descending.
+
+6. Take the first 10 trains.
+
+7. Add those ten trains to the final spreadsheet.
+
+The seven required Types are:
+
+1. Security
+
+2. Coach Cleanliness
+
+3. Bedroll
+
+4. Water Availability
+
+5. Electrical Equipment
+
+6. Catering and Vending Services
+
+7. Coach Maintenance
+
+
+============================================================
+REPORT 4 — EXACT PORTAL TYPE VALUES
+============================================================
+
+The visible portal labels may contain additional spaces, hyphens or the word Train.
+
+Use the closest exact option value displayed by the portal.
+
+Expected portal options visible in the reference form include:
+
+1. Security-Train
+
+2. Coach - Cleanliness- Train
+
+3. Bed Roll- Train
+
+4. Water Availability- Train
+
+5. Electrical Equipment- Train
+
+6. Catering & Vending Services- Train
+
+7. Coach - Maintenance- Train
+
+Matching requirements:
+
+1. Match the option by normalized visible text.
+
+2. Normalization may:
+
+   - trim spaces
+   - collapse repeated spaces
+   - normalize hyphen spacing
+   - compare case-insensitively
+
+3. Do not use partial matching that could select the wrong Type.
+
+4. Do not select:
+
+   - ALL
+   - Medical Assistance
+   - Divyangjan Facilities
+   - Facilities for Women with Special Needs
+   - Punctuality
+   - Staff Behaviour
+   - Corruption/Bribery
+   - Miscellaneous
+
+5. After setting each Type, read back the selected value.
+
+6. Log both:
+
+   - requested normalized Type name
+   - actual selected portal label
+
+
+============================================================
+REPORT 4 — NAVIGATION
+============================================================
+
+STEP A1
+
+Activate the authenticated RailMadad MIS tab.
+
+STEP A2
+
+Locate MIS Reports.
+
+STEP A3
+
+Expand MIS Reports if collapsed.
+
+STEP A4
+
+Scroll inside the MIS Reports sidebar until this option is visible:
+
+10) Zone/Train Type wise Report
+
+STEP A5
+
+Click:
+
+10) Zone/Train Type wise Report
+
+STEP A6
+
+Verify the visible heading is:
+
+Zone/Train Type wise Report
+
+STEP A7
+
+Verify the filter form is present.
+
+
+============================================================
+REPORT 4 — BASE FILTERS
+============================================================
+
+Set or verify:
+
+Date Range:
+Previous Day
+
+Zone:
+ALL
+
+Division:
+ALL
+
+Sub Type:
+ALL
+
+Department:
+ALL
+
+View:
+Train No. Wise
+
+Coach Type:
+None selected
+
+Excluding Assistance Cases:
+Yes
+
+Type:
+This value changes during each iteration.
+
+Rules:
+
+1. The View must be Train No. Wise.
+
+2. The reference screenshot may initially display Train Type Wise.
+
+3. Change it to Train No. Wise before the first Submit.
+
+4. After every Submit, verify that View is still Train No. Wise.
+
+5. If the portal resets View:
+
+   - select Train No. Wise again before the next Type
+
+6. Before each Submit, read back:
+
+   - Date Range
+   - Zone
+   - Division
+   - Type
+   - Sub Type
+   - Department
+   - View
+   - Coach Type
+   - Excluding Assistance Cases
+
+7. Do not assume a selection was retained merely because the previous Type worked.
+
+
+============================================================
+REPORT 4 — ITERATION ORDER
+============================================================
+
+Process Types in this exact order:
+
+ITERATION 1:
+Security
+
+ITERATION 2:
+Coach Cleanliness
+
+ITERATION 3:
+Bedroll
+
+ITERATION 4:
+Water Availability
+
+ITERATION 5:
+Electrical Equipment
+
+ITERATION 6:
+Catering and Vending Services
+
+ITERATION 7:
+Coach Maintenance
+
+Do not process the Types in alphabetical order.
+
+Do not process them concurrently.
+
+Complete extraction and verification for one Type before moving to the next.
+
+
+============================================================
+REPORT 4 — PER-TYPE EXTRACTION PROCEDURE
+============================================================
+
+For each required Type, perform every step below.
+
+STEP B1
+
+Ensure the Zone/Train Type Wise page is active.
+
+STEP B2
+
+Verify:
+
+View = Train No. Wise
+
+STEP B3
+
+Select the current Type.
+
+STEP B4
+
+Read back the selected Type.
+
+STEP B5
+
+Verify all base filters.
+
+STEP B6
+
+Click Submit exactly once.
+
+STEP B7
+
+Wait until the train result table is visible.
+
+STEP B8
+
+Verify the table belongs to the selected Type.
+
+Use one or more of:
+
+- visible report heading
+- selected Type value
+- result caption
+- request metadata displayed above the table
+
+STEP B9
+
+Verify the table contains:
+
+- Train No.
+- Train Name
+- Owning Zone
+- Owning Division
+- Received
+
+STEP B10
+
+Locate the Received column header in the current table.
+
+STEP B11
+
+Click Received once.
+
+STEP B12
+
+Wait until the table order changes.
+
+STEP B13
+
+Click Received a second time.
+
+STEP B14
+
+Wait until the table becomes stable.
+
+STEP B15
+
+Verify Received descending numerically.
+
+STEP B16
+
+Extract all result pages.
+
+STEP B17
+
+Exclude any total or footer row.
+
+STEP B18
+
+Take exactly the first 10 train rows after descending sorting.
+
+STEP B19
+
+If fewer than 10 train rows exist:
+
+- retain all available rows
+- log the shortage
+- do not create fake rows
+
+STEP B20
+
+Preserve the displayed order.
+
+STEP B21
+
+Renumber S.No. from 1 to 10 for the final Type section.
+
+STEP B22
+
+Preserve Train No. as text when necessary.
+
+STEP B23
+
+Do not remove leading zeros from Train No.
+
+STEP B24
+
+Save raw data for the current Type.
+
+Suggested filenames:
+
+report4_security_raw.csv
+report4_security_top10.csv
+
+report4_coach_cleanliness_raw.csv
+report4_coach_cleanliness_top10.csv
+
+report4_bedroll_raw.csv
+report4_bedroll_top10.csv
+
+report4_water_availability_raw.csv
+report4_water_availability_top10.csv
+
+report4_electrical_equipment_raw.csv
+report4_electrical_equipment_top10.csv
+
+report4_catering_vending_raw.csv
+report4_catering_vending_top10.csv
+
+report4_coach_maintenance_raw.csv
+report4_coach_maintenance_top10.csv
+
+STEP B25
+
+Store the selected Top 10 DataFrame under its normalized Type key.
+
+STEP B26
+
+Do not lose already extracted Types when moving to the next Type.
+
+STEP B27
+
+After storing the current result, continue to the next required Type.
+
+
+============================================================
+REPORT 4 — SOURCE PDF ARCHIVE
+============================================================
+
+The HTML table remains the data source.
+
+PDF export is optional archival evidence only.
+
+For each Type:
+
+1. Complete HTML extraction first.
+
+2. Confirm the extracted row count.
+
+3. If the portal provides a PDF export button:
+
+   - trigger the PDF export only after extraction
+   - save it under project storage
+   - use a filename containing the Type and date
+
+4. Example:
+
+   backend/storage/archive/report4/<REPORT_DATE>/
+   report4_security_source.pdf
+
+5. Validate that the PDF exists and is non-empty.
+
+6. PDF failure must not invalidate successful HTML extraction.
+
+7. Do not parse the PDF.
+
+8. Do not use the PDF to calculate the Top 10.
+
+
+============================================================
+REPORT 4 — FINAL WORKBOOK STRUCTURE
+============================================================
+
+Create one workbook containing seven separate table sections.
+
+The final section order must be:
+
+1. Security
+
+2. Coach Cleanliness
+
+3. Bedroll
+
+4. Water Availability
+
+5. Electrical Equipment
+
+6. Catering and Vending Services
+
+7. Coach Maintenance
+
+Each section must contain these visible columns:
+
+- S.No.
+- Train Name
+- Owning Zone
+- Owning Division
+- Train No.
+- Received
+
+Each section heading must follow this pattern:
+
+Rail Madad 10 trains having maximum <TYPE_NAME> grievances
+
+Exact heading examples:
+
+Rail Madad 10 trains having maximum Security grievances
+
+Rail Madad 10 trains having maximum Coach Cleanliness grievances
+
+Rail Madad 10 trains having maximum Bedroll grievances
+
+Rail Madad 10 trains having maximum Water Availability grievances
+
+Rail Madad 10 trains having maximum Electrical Equipment grievances
+
+Rail Madad 10 trains having maximum Catering and Vending Services grievances
+
+Rail Madad 10 trains having maximum Coach Maintenance grievances
+
+Workbook rules:
+
+1. Use one main title above the first section.
+
+2. Include the report date.
+
+3. Place visible spacing between sections.
+
+4. Repeat the column headers for every section.
+
+5. Apply borders to every table.
+
+6. Use readable column widths.
+
+7. Preserve Train No. formatting.
+
+8. Keep Received numeric.
+
+9. Do not combine the seven Type sections into one unlabelled table.
+
+10. Do not aggregate trains across Types.
+
+11. A train may appear in more than one Type section.
+
+12. Do not remove a train from one Type merely because it appeared in another Type.
+
+
+============================================================
+REPORT 4 — TITLE HANDLING
+============================================================
+
+The written workflow calls this Report 4.
+
+The reference image shows:
+
+Rail Madad Report No 5 - Cause wise Bottom 10 Trains on date
+
+However, the actual extraction logic is Top 10 after descending Received sorting.
+
+Required implementation:
+
+1. Internal report key:
+
+   report_4
+
+2. Internal report name:
+
+   Cause-wise Top 10 Trains
+
+3. Keep the displayed title configurable.
+
+4. Suggested default application title:
+
+   Rail Madad Report No 4 - Cause wise Top 10 Trains on date <REPORT_DATE>
+
+5. If the existing approved template already contains:
+
+   Rail Madad Report No 5 - Cause wise Bottom 10 Trains on date
+
+   preserve the approved template title unless the user changes it.
+
+6. The title must never alter the selection logic.
+
+7. The selection remains:
+
+   first 10 rows after Received descending.
+
+
+============================================================
+REPORT 4 — SOUTH CENTRAL RAILWAY FORMATTING
+============================================================
+
+For every Type section:
+
+1. Inspect all ten selected rows.
+
+2. If South Central Railway appears anywhere in a row:
+
+   - colour the entire row yellow
+   - colour every cell's text black
+
+3. Apply the formatting across:
+
+   - S.No.
+   - Train Name
+   - Owning Zone
+   - Owning Division
+   - Train No.
+   - Received
+
+4. The reference output shows an example South Central Railway row highlighted in the Electrical Equipment section.
+
+5. Do not assume only one South Central Railway row exists.
+
+6. Highlight every matching row in every Type section.
+
+7. Preserve all matching highlights in the PDF.
+
+
+============================================================
+REPORT 4 — FINAL OUTPUTS
+============================================================
+
+Save the final workbook as:
+
+Rail_Madad_Report_4_Cause_Wise_Top_10_Trains_<REPORT_DATE>.xlsx
+
+Save the final PDF as:
+
+Rail_Madad_Report_4_Cause_Wise_Top_10_Trains_<REPORT_DATE>.pdf
+
+Store under:
+
+backend/storage/output/excel/<REPORT_DATE>/
+
+backend/storage/output/pdf/<REPORT_DATE>/
+
+
+============================================================
+REPORT 4 — VERIFICATION GATE
+============================================================
+
+Report 4 is complete only when every required check passes.
+
+[ ] Authenticated MIS tab found
+
+[ ] MIS Reports submenu expanded
+
+[ ] Report 10 opened
+
+[ ] Zone/Train Type Wise heading verified
+
+[ ] View set to Train No. Wise
+
+[ ] Security selected and verified
+
+[ ] Security Submit completed
+
+[ ] Security Received clicked twice
+
+[ ] Security descending order verified
+
+[ ] Security Top 10 extracted
+
+[ ] Coach Cleanliness selected and verified
+
+[ ] Coach Cleanliness Submit completed
+
+[ ] Coach Cleanliness Received clicked twice
+
+[ ] Coach Cleanliness descending order verified
+
+[ ] Coach Cleanliness Top 10 extracted
+
+[ ] Bedroll selected and verified
+
+[ ] Bedroll Submit completed
+
+[ ] Bedroll Received clicked twice
+
+[ ] Bedroll descending order verified
+
+[ ] Bedroll Top 10 extracted
+
+[ ] Water Availability selected and verified
+
+[ ] Water Availability Submit completed
+
+[ ] Water Availability Received clicked twice
+
+[ ] Water Availability descending order verified
+
+[ ] Water Availability Top 10 extracted
+
+[ ] Electrical Equipment selected and verified
+
+[ ] Electrical Equipment Submit completed
+
+[ ] Electrical Equipment Received clicked twice
+
+[ ] Electrical Equipment descending order verified
+
+[ ] Electrical Equipment Top 10 extracted
+
+[ ] Catering and Vending Services selected and verified
+
+[ ] Catering and Vending Services Submit completed
+
+[ ] Catering and Vending Services Received clicked twice
+
+[ ] Catering and Vending Services descending order verified
+
+[ ] Catering and Vending Services Top 10 extracted
+
+[ ] Coach Maintenance selected and verified
+
+[ ] Coach Maintenance Submit completed
+
+[ ] Coach Maintenance Received clicked twice
+
+[ ] Coach Maintenance descending order verified
+
+[ ] Coach Maintenance Top 10 extracted
+
+[ ] All seven sections created
+
+[ ] Section order matches the workflow
+
+[ ] Each section has no more than 10 rows
+
+[ ] Train numbers preserve leading zeros
+
+[ ] Every South Central Railway row is completely yellow
+
+[ ] Every South Central Railway row has black text in every cell
+
+[ ] Highlighting is preserved in Excel
+
+[ ] Highlighting is preserved in PDF
+
+[ ] Final Excel created
+
+[ ] Final PDF created
+
+[ ] Raw files saved inside project storage
+
+[ ] No file saved to Windows Downloads
+
+[ ] No paid API used
+
+If any required Type fails, Report 4 must return either:
+
+- failed
+- partial_success
+
+It must not be marked fully successful.
+
+
+################################################################
+REPORT 5
+TRAIN-MODE UNSATISFACTORY FEEDBACK COMPLAINTS
+################################################################
+
+
+============================================================
+REPORT 5 — FINAL PURPOSE
+============================================================
+
+Generate the detailed complaint report for unsatisfactory feedback where:
+
+Zone = South Central Railway
+
+Mode = Train
+
+The workflow is:
+
+1. Open Feedback with drill down.
+
+2. Select South Central Railway.
+
+3. Select Train mode.
+
+4. Submit.
+
+5. Sort the Zone Wise table by Feedback Received descending.
+
+6. Click the total Unsatisfactory count.
+
+7. Open the List of Complaints.
+
+8. Extract every complaint.
+
+9. Process the complaint rows using the existing hidden-formula/template workflow.
+
+10. Generate the final detailed report.
+
+
+============================================================
+REPORT 5 — NAVIGATION
+============================================================
+
+STEP A1
+
+Activate the authenticated RailMadad MIS tab.
+
+STEP A2
+
+Locate MIS Reports.
+
+STEP A3
+
+Expand MIS Reports if collapsed.
+
+STEP A4
+
+Click:
+
+6) Feedback (with drill down)
+
+STEP A5
+
+Verify the heading:
+
+Feedback (with drill down)
+
+STEP A6
+
+Verify the feedback filter form is visible.
+
+
+============================================================
+REPORT 5 — FILTERS
+============================================================
+
+Set or verify:
+
+Date Range:
+Previous Day
+
+Excluding Refund Cases:
+YES
+
+Excluding Inquiry Cases:
+YES
+
+Zone:
+South Central Railway
+
+Division:
+ALL
+
+Department:
+ALL
+
+Mode:
+Train
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+View:
+Zone Wise / Dept. Wise
+
+Excluding Assistance Cases:
+Yes
+
+Important:
+
+1. The portal option visible in the reference screenshot is:
+
+   South Central Railway
+
+2. Do not require the plural value:
+
+   South Central Railways
+
+3. Match the exact live portal option.
+
+4. Verify:
+
+   Mode = Train
+
+5. Do not continue if Mode is:
+
+   - Station
+   - ALL
+   - another mode
+
+6. Before Submit, read back and log every selected value.
+
+
+============================================================
+REPORT 5 — SUBMIT AND ZONE-WISE TABLE
+============================================================
+
+STEP B1
+
+Click Submit exactly once.
+
+STEP B2
+
+Wait until the Zone Wise Feedback table loads.
+
+STEP B3
+
+The page may contain two tables:
+
+- Zone Wise Report
+- Department Wise Report
+
+STEP B4
+
+For the next operation, use the first Zone Wise Report table.
+
+STEP B5
+
+Do not click a value in the Department Wise table.
+
+STEP B6
+
+Verify the Zone Wise table contains:
+
+- S.No.
+- Organisation
+- Feedback Received
+- % Feedback
+- Excellent
+- Satisfactory
+- Unsatisfactory
+- % Unsatisfactory
+
+STEP B7
+
+Locate the Feedback Received column in the Zone Wise table.
+
+STEP B8
+
+Treat Feedback Received as the received-count field required by the workflow.
+
+STEP B9
+
+Click Feedback Received once.
+
+STEP B10
+
+Wait for the table order to change.
+
+STEP B11
+
+Click Feedback Received a second time.
+
+STEP B12
+
+Wait for the table to become stable.
+
+STEP B13
+
+Verify Feedback Received is descending numerically.
+
+STEP B14
+
+Extract the complete Zone Wise summary table.
+
+STEP B15
+
+Save:
+
+report5_train_feedback_zone_summary.csv
+
+report5_train_feedback_zone_summary.parquet
+
+
+============================================================
+REPORT 5 — UNSATISFACTORY COUNT SELECTION
+============================================================
+
+The workflow screenshot displays an Unsatisfactory total of 22.
+
+The value 22 is an example from that report date.
+
+Do not hardcode 22.
+
+Required procedure:
+
+1. Locate the total row in the Zone Wise Feedback table.
+
+2. Locate the Unsatisfactory column.
+
+3. Read the current total Unsatisfactory value.
+
+4. Parse it as an integer.
+
+5. Log:
+
+   report5_unsatisfactory_total
+
+6. If the value is greater than zero:
+
+   - click the clickable Unsatisfactory total value
+
+7. The clicked cell must belong to:
+
+   - Zone Wise table
+   - Total row
+   - Unsatisfactory column
+
+8. Do not click:
+
+   - % Unsatisfactory
+   - Satisfactory
+   - a division-level count
+   - Department Wise table count
+
+9. If the Unsatisfactory total is zero:
+
+   - do not attempt to open a complaint modal
+   - create an empty complaint dataset with expected headers
+   - generate an empty-state report
+   - log no_unsatisfactory_complaints
+   - do not mark extraction as failed merely because the count is zero
+
+
+============================================================
+REPORT 5 — LIST OF COMPLAINTS MODAL
+============================================================
+
+After clicking the Unsatisfactory total:
+
+1. Wait for the modal titled:
+
+   List of Complaints
+
+2. Verify the modal is visible.
+
+3. Verify the background page is not being extracted instead of the modal.
+
+4. The modal may contain buttons:
+
+   - Excel
+   - Print
+   - PDF
+
+5. These buttons are not the primary data source.
+
+6. Extract the HTML complaint table directly from the modal.
+
+7. The visible modal table contains fields including:
+
+   - S.No.
+   - Ref. No.
+   - Registration Date
+   - Closing Date
+   - Mode
+   - Train/Station
+   - Channel
+   - Type
+   - Sub Type
+   - Zone
+   - Div
+   - Owning Zone
+   - Dept
+   - Breach
+   - Rating
+   - Status
+   - Disposal Time
+
+8. Additional columns may exist outside the initially visible horizontal area.
+
+9. Extract every column from the DOM, including columns that require horizontal scrolling to view.
+
+10. Do not extract only the visible viewport.
+
+11. Follow modal pagination until every complaint row is collected.
+
+12. Do not duplicate rows when changing pages.
+
+13. Use Ref. No. as the primary deduplication key when present.
+
+14. Preserve the original complaint order.
+
+15. Verify that each extracted row belongs to:
+
+    Mode = Train
+
+16. Verify that the result corresponds to the clicked Unsatisfactory category.
+
+17. If the modal displays a different rating category:
+
+    - save screenshot
+    - save modal HTML
+    - raise ExtractionError
+    - do not silently treat it as Unsatisfactory data
+
+18. Save raw complaints as:
+
+    report5_train_unsatisfactory_complaints_raw.csv
+
+    report5_train_unsatisfactory_complaints_raw.parquet
+
+
+============================================================
+REPORT 5 — MODAL COUNT VERIFICATION
+============================================================
+
+1. Compare:
+
+   Zone Wise Unsatisfactory total
+
+against:
+
+   Number of extracted complaint rows
+
+2. If the counts are equal:
+
+   - mark complaint_count_verified = true
+
+3. If they differ:
+
+   - verify pagination
+   - verify no search filter is active
+   - verify all pages were extracted
+   - verify rows were not duplicated
+   - retry extraction once
+
+4. If the count still differs:
+
+   - save screenshot
+   - save modal HTML
+   - mark Report 5 verification failed
+
+5. Do not silently ignore missing complaint rows.
+
+
+============================================================
+REPORT 5 — SOURCE ARCHIVE FROM MODAL
+============================================================
+
+The complaint table HTML is the data source.
+
+A PDF or Print copy may be archived after extraction.
+
+Procedure:
+
+1. Complete complaint extraction first.
+
+2. Confirm the raw data file exists.
+
+3. If using the modal PDF button:
+
+   - trigger PDF
+   - save under project storage
+   - validate the file
+
+4. If using Print and Print opens a new page:
+
+   - wait for the new page event
+   - identify the new print page
+   - wait until its content is fully rendered
+   - save or print the page as PDF into project storage
+   - validate the PDF
+   - close the new print page
+   - return to the original RailMadad MIS tab
+
+5. Never continue automation from the temporary print page.
+
+6. Never close the original RailMadad MIS page.
+
+7. Save source archive under:
+
+   backend/storage/archive/report5/<REPORT_DATE>/
+
+Suggested filename:
+
+report5_train_unsatisfactory_source.pdf
+
+8. Archive failure must not delete successfully extracted HTML data.
+
+
+============================================================
+REPORT 5 — HIDDEN FORMULA/TEMPLATE RULE
+============================================================
+
+The source workflow explicitly states that a hidden formula creates the final report after complaint data is pasted into a spreadsheet.
+
+The source document does not expose the formula itself.
+
+Cursor/Codex must not invent that hidden formula.
+
+Required implementation procedure:
+
+1. Search the existing project for:
+
+   - Excel templates
+   - XLSX files
+   - XLSM files
+   - hidden worksheets
+   - hidden columns
+   - named ranges
+   - Excel tables
+   - formulas
+   - existing report-processing code
+   - Report 5 templates
+   - Report 6 templates
+
+2. Identify the approved complaint-report template.
+
+3. Inspect:
+
+   - expected input worksheet
+   - expected starting cell
+   - required headers
+   - hidden sheets
+   - formula columns
+   - output worksheet
+   - print area
+   - page orientation
+   - repeated header rows
+
+4. Preserve all existing formulas.
+
+5. Preserve all hidden worksheets.
+
+6. Preserve all named ranges.
+
+7. Preserve all formatting.
+
+8. Insert extracted complaint data only into the designated input area.
+
+9. Do not paste over formula cells.
+
+10. Do not convert formula cells into values unless the existing workflow explicitly requires it.
+
+11. If the template maps columns by header, use header-based mapping.
+
+12. Do not map columns only by fixed position without verifying headers.
+
+13. After inserting data, verify that the final output sheet is populated.
+
+14. Verify that the number of final complaint rows corresponds to the input complaint rows, except where the approved formula intentionally filters rows.
+
+15. If no approved formula/template exists:
+
+    - stop final Report 5 generation
+    - preserve the raw complaint data
+    - return error:
+
+      REPORT5_TEMPLATE_OR_FORMULA_MISSING
+
+16. Do not fabricate a replacement formula and present it as the original hidden formula.
+
+
+============================================================
+REPORT 5 — FINAL DETAIL REPORT STRUCTURE
+============================================================
+
+The reference output is a detailed multi-page complaint report.
+
+The final report must use the existing approved template.
+
+The raw extraction must retain all available complaint fields, including fields not immediately visible in the modal.
+
+The final reference visually includes complaint-related fields such as:
+
+- serial number
+- complaint/reference number
+- train or station identifier
+- complaint Type
+- complaint Sub Type
+- Zone
+- Division
+- feedback remark
+- resolution or post-report field
+- complaint description
+- remarks
+- user identifier
+
+Do not assume the exact final column mapping from the screenshot alone.
+
+Use the approved workbook/template header mapping.
+
+Formatting requirements:
+
+1. Use landscape orientation if required by the template.
+
+2. Wrap long complaint-description text.
+
+3. Wrap long remarks text.
+
+4. Keep row heights sufficient to display the wrapped text.
+
+5. Repeat headers on each printed page where supported.
+
+6. Keep complaint/reference numbers readable.
+
+7. Preserve date and time fields.
+
+8. Preserve Train/Station values.
+
+9. Preserve long text without truncation.
+
+10. Apply borders to the full report table.
+
+11. Keep black text unless the template has an approved exception.
+
+
+============================================================
+REPORT 5 — SOUTH CENTRAL RAILWAY FORMATTING
+============================================================
+
+After the final report is generated:
+
+1. Scan every final complaint row.
+
+2. If South Central Railway appears anywhere in the row:
+
+   - set the entire row background to yellow
+   - set every cell's text to black
+
+3. Apply across all columns, including:
+
+   - complaint number
+   - Train/Station
+   - Type
+   - Sub Type
+   - Zone
+   - Division
+   - complaint description
+   - feedback remarks
+   - internal remarks
+   - user fields
+   - blank cells inside the report width
+
+4. Do not rely only on the abbreviated portal value:
+
+   SC
+
+5. The mandatory formatting trigger is the full text:
+
+   South Central Railway
+
+6. If the final template expands SC to South Central Railway, highlight the row.
+
+7. Preserve the yellow row and black text in PDF.
+
+
+============================================================
+REPORT 5 — FINAL OUTPUTS
+============================================================
+
+Save processed data as:
+
+report5_train_unsatisfactory_complaints_processed.csv
+
+report5_train_unsatisfactory_complaints_processed.parquet
+
+Save Excel as:
+
+Rail_Madad_Report_5_Train_Unsatisfactory_Complaints_<REPORT_DATE>.xlsx
+
+Save PDF as:
+
+Rail_Madad_Report_5_Train_Unsatisfactory_Complaints_<REPORT_DATE>.pdf
+
+Store under:
+
+backend/storage/processed/<REPORT_DATE>/
+
+backend/storage/output/excel/<REPORT_DATE>/
+
+backend/storage/output/pdf/<REPORT_DATE>/
+
+
+============================================================
+REPORT 5 — CLEANUP
+============================================================
+
+After extraction and archival:
+
+1. Close the List of Complaints modal.
+
+2. Verify the Feedback page is visible again.
+
+3. Close any temporary Print or PDF page.
+
+4. Keep the original authenticated MIS tab open.
+
+5. Clear any temporary modal search filter.
+
+6. Do not log out.
+
+7. Continue to Report 6.
+
+
+============================================================
+REPORT 5 — VERIFICATION GATE
+============================================================
+
+[ ] Feedback with drill down opened
+
+[ ] Zone set to South Central Railway
+
+[ ] Mode set to Train
+
+[ ] All other filters verified
+
+[ ] Submit clicked
+
+[ ] Correct Zone Wise table identified
+
+[ ] Department Wise table not mistakenly used
+
+[ ] Feedback Received clicked exactly twice
+
+[ ] Feedback Received descending order verified
+
+[ ] Zone Wise summary extracted
+
+[ ] Total row identified
+
+[ ] Current Unsatisfactory total read dynamically
+
+[ ] Unsatisfactory value not hardcoded as 22
+
+[ ] Correct Unsatisfactory total cell clicked
+
+[ ] List of Complaints modal opened
+
+[ ] Every modal page extracted
+
+[ ] Every modal column extracted
+
+[ ] Horizontal/off-screen columns retained
+
+[ ] Ref. No. duplicates removed correctly
+
+[ ] Extracted rows verified as Train mode
+
+[ ] Extracted complaint count matches summary count
+
+[ ] Raw complaint CSV saved
+
+[ ] Raw complaint Parquet saved
+
+[ ] Existing hidden formula/template located
+
+[ ] Formula cells preserved
+
+[ ] Input data inserted into the correct template area
+
+[ ] Final report populated
+
+[ ] Long complaint text preserved
+
+[ ] Every South Central Railway row is completely yellow
+
+[ ] Every highlighted row has black text in every cell
+
+[ ] Excel highlighting verified
+
+[ ] PDF highlighting verified
+
+[ ] Final Excel created
+
+[ ] Final PDF created
+
+[ ] Temporary Print/PDF page closed
+
+[ ] Original RailMadad tab remains open
+
+[ ] No file saved to Windows Downloads
+
+[ ] No paid API used
+
+If the hidden formula/template is missing, Report 5 must return:
+
+REPORT5_TEMPLATE_OR_FORMULA_MISSING
+
+It must not claim successful final-report generation.
+
+
+################################################################
+REPORT 6
+STATION-MODE UNSATISFACTORY FEEDBACK COMPLAINTS
+################################################################
+
+
+============================================================
+REPORT 6 — FINAL PURPOSE
+============================================================
+
+Generate the detailed complaint report for unsatisfactory feedback where:
+
+Zone = South Central Railway
+
+Mode = Station
+
+Report 6 uses the same general Feedback drill-down workflow as Report 5, but Mode must be Station.
+
+Train-mode data from Report 5 must not be reused as Station-mode data.
+
+
+============================================================
+REPORT 6 — NAVIGATION
+============================================================
+
+STEP A1
+
+Activate the original authenticated RailMadad MIS tab.
+
+STEP A2
+
+Ensure no complaint modal from Report 5 remains open.
+
+STEP A3
+
+Locate MIS Reports.
+
+STEP A4
+
+Expand MIS Reports if collapsed.
+
+STEP A5
+
+Click:
+
+6) Feedback (with drill down)
+
+STEP A6
+
+Verify the heading:
+
+Feedback (with drill down)
+
+STEP A7
+
+Verify the filter form is visible.
+
+
+============================================================
+REPORT 6 — FILTERS
+============================================================
+
+Set or verify:
+
+Date Range:
+Previous Day
+
+Excluding Refund Cases:
+YES
+
+Excluding Inquiry Cases:
+YES
+
+Zone:
+South Central Railway
+
+Division:
+ALL
+
+Department:
+ALL
+
+Mode:
+Station
+
+Type:
+ALL
+
+Sub Type:
+ALL
+
+View:
+Zone Wise / Dept. Wise
+
+Excluding Assistance Cases:
+Yes
+
+Critical requirements:
+
+1. Mode must be changed from Train to Station.
+
+2. Read back the selected Mode.
+
+3. Do not assume the change succeeded.
+
+4. Log:
+
+   requested_mode = Station
+   selected_mode = <LIVE_VALUE>
+
+5. If selected_mode is not Station:
+
+   - do not click Submit
+   - raise FilterError
+
+6. Verify the previous Report 5 result is no longer being used.
+
+7. Before Submit, read back and log every selected field.
+
+
+============================================================
+REPORT 6 — SUBMIT AND RESULT REFRESH
+============================================================
+
+STEP B1
+
+Record a fingerprint of the existing result before Submit where possible.
+
+The fingerprint may contain:
+
+- heading text
+- mode metadata
+- first organisation
+- total feedback count
+- result-generation timestamp
+
+STEP B2
+
+Click Submit exactly once.
+
+STEP B3
+
+Wait for the result to refresh.
+
+STEP B4
+
+Verify the result metadata shows Station mode.
+
+STEP B5
+
+Do not proceed if the result still indicates Train mode.
+
+STEP B6
+
+Identify the Zone Wise Feedback table.
+
+STEP B7
+
+Do not use the Department Wise table.
+
+STEP B8
+
+Verify the table contains:
+
+- S.No.
+- Organisation
+- Feedback Received
+- % Feedback
+- Excellent
+- Satisfactory
+- Unsatisfactory
+- % Unsatisfactory
+
+
+============================================================
+REPORT 6 — SORTING
+============================================================
+
+1. Locate Feedback Received in the Zone Wise table.
+
+2. Click Feedback Received once.
+
+3. Wait until the table updates.
+
+4. Click Feedback Received a second time.
+
+5. Wait until the table becomes stable.
+
+6. Verify descending order numerically.
+
+7. Extract the complete Zone Wise summary.
+
+8. Save:
+
+   report6_station_feedback_zone_summary.csv
+
+   report6_station_feedback_zone_summary.parquet
+
+
+============================================================
+REPORT 6 — UNSATISFACTORY COUNT
+============================================================
+
+The workflow text refers to an Unsatisfactory value such as 22.
+
+That number is an example only.
+
+Do not hardcode it.
+
+Required procedure:
+
+1. Locate the Zone Wise total row.
+
+2. Locate the Unsatisfactory column.
+
+3. Read the current total.
+
+4. Parse it as an integer.
+
+5. Log:
+
+   report6_unsatisfactory_total
+
+6. If greater than zero:
+
+   - click the total-row Unsatisfactory value
+
+7. If equal to zero:
+
+   - produce an empty complaint dataset
+   - generate an empty-state final report
+   - log no_station_unsatisfactory_complaints
+   - do not attempt to open a modal
+
+8. Do not click:
+
+   - % Unsatisfactory
+   - a single organisation's value
+   - a Department Wise value
+   - the old Report 5 value
+
+
+============================================================
+REPORT 6 — LIST OF COMPLAINTS MODAL
+============================================================
+
+After clicking the current Station-mode Unsatisfactory total:
+
+1. Wait for:
+
+   List of Complaints
+
+2. Verify the modal is newly loaded for Report 6.
+
+3. Extract the complaint table from the HTML DOM.
+
+4. Extract every page.
+
+5. Extract every column, including horizontally hidden columns.
+
+6. Preserve all fields.
+
+7. Use Ref. No. as the deduplication key where present.
+
+8. Verify extracted rows correspond to:
+
+   Mode = Station
+
+9. The Train/Station field must represent station data according to the live portal result.
+
+10. If extracted rows still show Train mode:
+
+    - stop
+    - save screenshot
+    - save modal HTML
+    - raise ExtractionError
+
+11. Verify the complaint category corresponds to the Unsatisfactory count that was clicked.
+
+12. Save:
+
+    report6_station_unsatisfactory_complaints_raw.csv
+
+    report6_station_unsatisfactory_complaints_raw.parquet
+
+
+============================================================
+REPORT 6 — COUNT VERIFICATION
+============================================================
+
+1. Compare:
+
+   Station-mode Zone Wise Unsatisfactory total
+
+with:
+
+   Number of extracted modal complaint rows
+
+2. If the counts differ:
+
+   - verify all pages
+   - clear modal search field
+   - verify no stale Report 5 modal data remains
+   - retry extraction once
+
+3. If the count remains different:
+
+   - save screenshot
+   - save modal HTML
+   - mark Report 6 failed
+
+4. Never mix the Report 5 Train count with the Report 6 Station count.
+
+
+============================================================
+REPORT 6 — SOURCE ARCHIVE
+============================================================
+
+HTML remains the data source.
+
+After successful extraction:
+
+1. Archive the modal output as PDF when required.
+
+2. If Print opens a new page:
+
+   - wait for the new page
+   - verify it contains the current Station-mode complaint content
+   - save the PDF under project storage
+   - validate file existence and size
+   - close the new page
+   - return to the original RailMadad MIS tab
+
+3. Suggested archive path:
+
+   backend/storage/archive/report6/<REPORT_DATE>/
+
+4. Suggested filename:
+
+   report6_station_unsatisfactory_source.pdf
+
+5. Archive failure must not delete extracted Station complaint data.
+
+
+============================================================
+REPORT 6 — HIDDEN FORMULA/TEMPLATE RULE
+============================================================
+
+Report 6 also depends on the approved hidden-formula/template workflow.
+
+Do not invent a replacement formula.
+
+Required procedure:
+
+1. Determine whether Report 6 uses:
+
+   - the same template as Report 5
+   - a separate Station template
+   - a mode-controlled sheet inside one workbook
+
+2. Inspect existing project templates and code.
+
+3. Identify the correct Station-mode input area.
+
+4. Map complaint data by header.
+
+5. Preserve:
+
+   - formulas
+   - hidden worksheets
+   - named ranges
+   - print settings
+   - formatting
+   - long-text fields
+
+6. Do not paste Report 6 data into the Report 5 output sheet without clearing or isolating the Report 5 input.
+
+7. Do not overwrite the Report 5 final output.
+
+8. Verify that the generated final rows correspond to Station-mode complaint reference numbers.
+
+9. If the required template/formula cannot be identified:
+
+   - save all raw data
+   - return:
+
+     REPORT6_TEMPLATE_OR_FORMULA_MISSING
+
+10. Do not claim Report 6 final output was generated successfully.
+
+
+============================================================
+REPORT 6 — FINAL DETAIL REPORT
+============================================================
+
+The final Report 6 must use the approved detailed complaint-report layout.
+
+Requirements:
+
+1. Retain all available Station complaint fields.
+
+2. Preserve complaint/reference numbers.
+
+3. Preserve Registration Date.
+
+4. Preserve Closing Date.
+
+5. Preserve Mode.
+
+6. Preserve Train/Station.
+
+7. Preserve Channel.
+
+8. Preserve Type.
+
+9. Preserve Sub Type.
+
+10. Preserve Zone.
+
+11. Preserve Division.
+
+12. Preserve Owning Zone.
+
+13. Preserve Department.
+
+14. Preserve Breach.
+
+15. Preserve Rating.
+
+16. Preserve Status.
+
+17. Preserve Disposal Time.
+
+18. Preserve any additional:
+
+    - complaint description
+    - feedback remarks
+    - resolution remarks
+    - user identifiers
+    - internal remarks
+
+19. Wrap long text.
+
+20. Use sufficient row height.
+
+21. Apply borders.
+
+22. Repeat headers on printed pages where supported.
+
+23. Keep the report readable in landscape PDF.
+
+
+============================================================
+REPORT 6 — SOUTH CENTRAL RAILWAY FORMATTING
+============================================================
+
+1. Scan every final Station complaint row.
+
+2. If South Central Railway appears anywhere in the row:
+
+   - set every cell in the row to yellow background
+   - set every cell's text to black
+
+3. Apply across the full final table width.
+
+4. Apply to blank cells inside the row.
+
+5. Do not highlight only the Station field.
+
+6. Do not highlight only the Zone field.
+
+7. Preserve the formatting in Excel.
+
+8. Preserve the formatting in PDF.
+
+9. Verify every cell in every matching row.
+
+
+============================================================
+REPORT 6 — FINAL OUTPUTS
+============================================================
+
+Save processed data as:
+
+report6_station_unsatisfactory_complaints_processed.csv
+
+report6_station_unsatisfactory_complaints_processed.parquet
+
+Save Excel as:
+
+Rail_Madad_Report_6_Station_Unsatisfactory_Complaints_<REPORT_DATE>.xlsx
+
+Save PDF as:
+
+Rail_Madad_Report_6_Station_Unsatisfactory_Complaints_<REPORT_DATE>.pdf
+
+Store under:
+
+backend/storage/processed/<REPORT_DATE>/
+
+backend/storage/output/excel/<REPORT_DATE>/
+
+backend/storage/output/pdf/<REPORT_DATE>/
+
+
+============================================================
+REPORT 6 — CLEANUP
+============================================================
+
+1. Close the List of Complaints modal.
+
+2. Close every temporary Print or PDF page.
+
+3. Return focus to the original RailMadad MIS tab.
+
+4. Leave the user logged in.
+
+5. Do not close Chrome.
+
+6. Do not log out.
+
+7. Save final workflow status.
+
+
+============================================================
+REPORT 6 — VERIFICATION GATE
+============================================================
+
+[ ] Report 5 modal closed before starting
+
+[ ] Feedback with drill down opened
+
+[ ] Zone set to South Central Railway
+
+[ ] Mode explicitly changed to Station
+
+[ ] Selected Mode read back as Station
+
+[ ] All filters verified
+
+[ ] Submit clicked
+
+[ ] Result refreshed after changing Mode
+
+[ ] Result metadata verified as Station mode
+
+[ ] Correct Zone Wise table identified
+
+[ ] Department Wise table not mistakenly used
+
+[ ] Feedback Received clicked exactly twice
+
+[ ] Feedback Received descending order verified
+
+[ ] Zone Wise Station summary extracted
+
+[ ] Current Unsatisfactory total read dynamically
+
+[ ] Unsatisfactory count not hardcoded as 22
+
+[ ] Correct total-row Unsatisfactory value clicked
+
+[ ] List of Complaints modal opened
+
+[ ] Modal belongs to the current Station result
+
+[ ] Every modal page extracted
+
+[ ] Every modal column extracted
+
+[ ] Horizontal/off-screen columns retained
+
+[ ] Ref. No. duplicates removed correctly
+
+[ ] Extracted rows verified as Station mode
+
+[ ] Complaint count matches Station Unsatisfactory total
+
+[ ] Raw CSV created
+
+[ ] Raw Parquet created
+
+[ ] Correct hidden formula/template identified
+
+[ ] Report 5 data not overwritten
+
+[ ] Formula cells preserved
+
+[ ] Final Station report populated
+
+[ ] Long complaint text retained
+
+[ ] Every South Central Railway row is completely yellow
+
+[ ] Every highlighted row has black text in every cell
+
+[ ] Excel highlighting verified
+
+[ ] PDF highlighting verified
+
+[ ] Final Excel created
+
+[ ] Final PDF created
+
+[ ] Temporary Print/PDF page closed
+
+[ ] Original MIS tab remains open
+
+[ ] No file saved to Windows Downloads
+
+[ ] No paid API used
+
+
+============================================================
+SECTION 5 — REPORT 5 AND REPORT 6 SEPARATION RULE
+============================================================
+
+Report 5 and Report 6 use the same RailMadad page but must remain separate datasets.
+
+The implementation must preserve:
+
+REPORT 5:
+Mode = Train
+
+REPORT 6:
+Mode = Station
+
+Required separation:
+
+1. Use separate raw filenames.
+
+2. Use separate processed filenames.
+
+3. Use separate output filenames.
+
+4. Use separate source-archive directories.
+
+5. Use separate run-state records.
+
+6. Use separate row counts.
+
+7. Use separate verification results.
+
+8. Include Mode in the metadata of every saved artifact.
+
+9. Do not append Train rows to Station rows unless a specifically approved combined report requires it.
+
+10. Do not reuse a DataFrame variable without replacing and verifying its content.
+
+11. Clear or recreate modal-extraction state between Reports 5 and 6.
+
+12. Clear any active modal Search field.
+
+13. Verify the mode column after extraction.
+
+14. Validate that:
+
+    all Report 5 rows are Train mode
+
+15. Validate that:
+
+    all Report 6 rows are Station mode
+
+16. Mixed-mode output must fail verification.
+
+
+============================================================
+SECTION 6 — OPTIONAL COMBINED REPORT 5 AND 6
+============================================================
+
+The reference image appears to show a shared or reused detailed output for the complaint workflows.
+
+Do not generate a combined report automatically unless an approved template or existing code explicitly requires one.
+
+If the current approved project contains a combined Report 5 and 6 template:
+
+1. Generate Report 5 Train data separately.
+
+2. Generate Report 6 Station data separately.
+
+3. Verify both datasets separately.
+
+4. Append or place them into the combined template only after both verification gates pass.
+
+5. Add a Mode column or clear section labels so Train and Station rows remain distinguishable.
+
+6. Do not remove individual Report 5 and Report 6 raw outputs.
+
+7. Suggested optional filename:
+
+   Rail_Madad_Reports_5_6_Unsatisfactory_Complaints_<REPORT_DATE>.xlsx
+
+8. Suggested optional PDF:
+
+   Rail_Madad_Reports_5_6_Unsatisfactory_Complaints_<REPORT_DATE>.pdf
+
+9. Apply the South Central Railway yellow-row and black-text rule across the combined report.
+
+10. If there is no approved combined template, do not invent one.
+
+
+============================================================
+SECTION 7 — REPORTS 4–6 EXECUTION ORDER
+============================================================
+
+Execute in this order:
+
+1. Report 4
+
+2. Report 5
+
+3. Report 6
+
+After each report:
+
+1. Run the complete verification gate.
+
+2. Save:
+
+   - report status
+   - row counts
+   - source files
+   - processed files
+   - output paths
+   - warnings
+   - errors
+   - screenshots
+   - HTML debug files
+
+3. Status values may include:
+
+   success
+
+   partial_success
+
+   failed
+
+   skipped
+
+4. Authentication failure stops all remaining reports.
+
+5. A Report 4 Type failure may produce partial_success if other Types succeeded.
+
+6. Report 5 or Report 6 missing-template errors must preserve raw complaint data.
+
+7. PDF failure must not delete:
+
+   - raw CSV
+   - raw Parquet
+   - processed data
+   - successful Excel output
+
+
+============================================================
+SECTION 8 — REPORTS 4–6 ERROR TYPES
+============================================================
+
+Use clear errors such as:
+
+AuthenticationError
+
+NavigationError
+
+FilterError
+
+TypeSelectionError
+
+SortError
+
+ExtractionError
+
+CountMismatchError
+
+ModalError
+
+TemplateError
+
+FormulaError
+
+FormattingError
+
+OutputGenerationError
+
+ArchiveError
+
+ModeMismatchError
+
+Error requirements:
+
+1. Include report number.
+
+2. Include report name.
+
+3. Include current portal page.
+
+4. Include current selected filters.
+
+5. Include the failing step.
+
+6. Include screenshot path.
+
+7. Include saved HTML path where applicable.
+
+8. Never include:
+
+   - password
+   - cookie
+   - authentication token
+   - full session storage
+   - secret key
+
+
+============================================================
+SECTION 9 — FINAL REPORTS 4–6 VERIFICATION
+============================================================
+
+The Reports 4–6 implementation is complete only when:
+
+[ ] Report 4 processes all seven required Types
+
+[ ] Report 4 takes the first 10 after Received descending
+
+[ ] Report 4 contains seven labelled table sections
+
+[ ] Report 4 preserves Train No. values
+
+[ ] Report 5 uses South Central Railway and Train mode
+
+[ ] Report 5 dynamically clicks the current Unsatisfactory total
+
+[ ] Report 5 extracts every complaint row
+
+[ ] Report 5 uses the approved hidden-formula/template workflow
+
+[ ] Report 6 uses South Central Railway and Station mode
+
+[ ] Report 6 refreshes the result after Mode changes
+
+[ ] Report 6 dynamically clicks the current Unsatisfactory total
+
+[ ] Report 6 extracts every complaint row
+
+[ ] Report 6 uses the approved hidden-formula/template workflow
+
+[ ] Report 5 and Report 6 datasets remain separate
+
+[ ] Every South Central Railway row is completely yellow
+
+[ ] Every highlighted row has black text in every cell
+
+[ ] Excel retains yellow background and black text
+
+[ ] PDF retains yellow background and black text
+
+[ ] All raw data comes from HTML tables
+
+[ ] PDFs are not used for ingestion
+
+[ ] No OCR is used
+
+[ ] No example value such as 22 is hardcoded
+
+[ ] No file is saved to Windows Downloads
+
+[ ] All final outputs are saved under backend/storage
+
+[ ] Existing Reports 1–3 remain unaffected
+
+[ ] Existing frontend remains functional
+
+[ ] Existing FastAPI backend remains functional
+
+[ ] Existing authentication remains functional
+
+[ ] Existing Playwright CDP connection remains functional
+
+[ ] No mandatory paid API is used
+
+
+============================================================
+SECTION 10 — CURSOR/CODEX IMPLEMENTATION RULES
+============================================================
+
+Cursor/Codex must:
+
+1. Read:
+
+   RAILMADAD_AUTOMATION_SPEC_REPORTS_1_2_3.txt
+
+2. Read:
+
+   RAILMADAD_AUTOMATION_SPEC_REPORTS_4_5_6.txt
+
+3. Inspect the entire existing codebase before modifying code.
+
+4. Search for existing:
+
+   - report services
+   - report processors
+   - spreadsheet templates
+   - hidden-formula workbooks
+   - output formatters
+   - PDF generators
+   - modal extractors
+   - shared Playwright helpers
+
+5. Do not create duplicate services when an appropriate existing service can be extended.
+
+6. Preserve working functionality.
+
+7. Implement Report 4 first.
+
+8. Do not implement Report 5 until Report 4 verification passes.
+
+9. Before implementing Report 5 final processing:
+
+   - locate and inspect the hidden-formula/template workflow
+
+10. Do not invent the hidden formula.
+
+11. Implement Report 5 and verify Train mode.
+
+12. Do not implement Report 6 until Report 5 verification passes or its only blocker is a clearly reported missing template.
+
+13. Implement Report 6 and verify Station mode.
+
+14. Implement South Central Railway formatting once as a shared reusable function.
+
+15. After every report, return:
+
+    - files inspected
+    - files modified
+    - functions added
+    - functions reused
+    - selectors used
+    - selected filter values
+    - extracted row counts
+    - Top-N counts
+    - unsatisfactory totals
+    - modal row counts
+    - count-verification result
+    - template/formula location
+    - South Central Railway rows detected
+    - South Central Railway rows highlighted
+    - Excel output path
+    - PDF output path
+    - source archive path
+    - verification failures
+    - remaining blockers
+
+16. Do not claim success without verification evidence.
+
+17. Do not introduce mandatory paid APIs.
+
+18. Do not change the existing login flow.
+
+19. Do not launch a second browser.
+
+20. Do not use Windows Downloads.
+
+
+============================================================
+END OF REPORTS 4–6 SPECIFICATION
+============================================================

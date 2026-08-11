@@ -1,0 +1,36 @@
+{
+  "selected_column_ids": [
+    "division.source_a.sno",
+    "division.source_a.division",
+    "division.source_a.received",
+    "division.source_a.percent_share",
+    "division.source_a.closed",
+    "division.source_a.avg_disposal_time",
+    "division.source_b.feedback_received",
+    "division.source_b.percent_feedback",
+    "division.source_b.excellent",
+    "division.source_b.satisfactory",
+    "division.source_b.unsatisfactory",
+    "division.source_b.percent_unsatisfactory"
+  ],
+  "column_order": [
+    "division.source_a.sno",
+    "division.source_a.division",
+    "division.source_a.received",
+    "division.source_a.percent_share",
+    "division.source_a.closed",
+    "division.source_a.avg_disposal_time",
+    "division.source_b.feedback_received",
+    "division.source_b.percent_feedback",
+    "division.source_b.excellent",
+    "division.source_b.satisfactory",
+    "division.source_b.unsatisfactory",
+    "division.source_b.percent_unsatisfactory"
+  ],
+  "export_format": "xlsx",
+  "config_overrides": {
+    "topCount": 25,
+    "sortBy": "count"
+  },
+  "filter_conditions": []
+}

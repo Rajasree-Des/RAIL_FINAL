@@ -1,0 +1,81 @@
+from app.infrastructure.database.models import WorkflowModel
+
+ACCEPTED_FILES = ".xlsx,.xls,.csv"
+
+
+def get_workflow_definitions() -> list[WorkflowModel]:
+    return [
+        WorkflowModel(
+            id="merging",
+            name="Merging",
+            order=1,
+            description="Merge multiple uploaded spreadsheets into one master dataset.",
+            variant="merge",
+            icon="Layers",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="division-top-25",
+            name="Division (Top 25)",
+            order=2,
+            description="Generate Division-wise Top 25 report from uploaded spreadsheet data.",
+            variant="report",
+            icon="Building2",
+            upload_label="Division Spreadsheet",
+            report_source_id="division",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="train-no-top-20",
+            name="Train No (Top 20)",
+            order=3,
+            description="Generate Top 20 Train Number report from uploaded spreadsheet data.",
+            variant="report",
+            icon="TrainFront",
+            upload_label="Train Spreadsheet",
+            report_source_id="train",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="types-top-10",
+            name="Types (Top 10)",
+            order=4,
+            description="Generate complaint type analysis report from uploaded spreadsheet data.",
+            variant="report",
+            icon="Tags",
+            upload_label="Spreadsheet",
+            report_source_id="types",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="scr-train",
+            name="SCR (Train)",
+            order=5,
+            description="Generate SCR Train Analysis report from uploaded spreadsheet data.",
+            variant="report",
+            icon="Route",
+            upload_label="Spreadsheet",
+            report_source_id="scr-train",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="scr-station",
+            name="SCR (Station)",
+            order=6,
+            description="Generate SCR Station Analysis report from uploaded spreadsheet data.",
+            variant="report",
+            icon="MapPin",
+            upload_label="Spreadsheet",
+            report_source_id="scr-station",
+            accepted_files=ACCEPTED_FILES,
+        ),
+        WorkflowModel(
+            id="summary-generation",
+            name="Summary Generation",
+            order=7,
+            description="Generate the final official report using outputs from completed module reports.",
+            variant="summary",
+            icon="FileCheck",
+            accepted_files="",
+        ),
+    ]

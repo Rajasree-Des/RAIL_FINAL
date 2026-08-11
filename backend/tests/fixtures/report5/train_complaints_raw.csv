@@ -1,0 +1,9 @@
+Ref. No.,Mode,Registration Date,Train/Station,Type,Sub Type,Department,Status,Zone,Div,feedbackRemark,trainNameForReport/Station Name,complaintDesc,remarks,userId
+REF001,Train,15-07-26 21:15,Rajdhani Express,Coach Cleanliness,General,Operations,Pending,SC,HYB,Poor service,Rajdhani Express,Coach was dirty,Follow up needed,chg_sc_sc
+REF002,Train,15-07-26 20:43,Shatabdi Express,Bedroll,Missing,Housekeeping,Resolved,SC,SC,Not resolved,Shatabdi Express,Missing bedroll,Resolved quickly,chg_sc_sc
+REF003,Train,15-07-26 19:13,South Central Railway Train,Water Availability,Not Available,Operations,Pending,SC,SC,Still pending,SCR Train,No water,Escalated,cnw_sc_sc
+REF004,Train,15-07-26 18:00,Duronto Express,Electrical,Fan Not Working,Maintenance,In Progress,NC,DLI,Fan still broken,Duronto Express,AC issue,Under repair,cnw_nc_dli
+REF005,Train,15-07-26 17:30,Garib Rath,Security,Theft,RPF,Closed,WR,BCT,Case closed,Garib Rath,Theft reported,Closed by RPF,cnw_wr_bct
+REF006,Train,15-07-26 16:45,Jan Shatabdi,Catering,Poor Quality,Catering,Pending,SC,SC,Quality poor,Jan Shatabdi,Bad food,Pending review,catering_sc
+REF007,Train,15-07-26 15:20,Express Train,Coach Maintenance,AC Not Working,Maintenance,Resolved,SC,VSKP,Fixed now,Express Train,AC failure,Resolved,cnw_sc_vskp
+REF008,Train,15-07-26 14:10,SCR Express,Cleanliness,Toilets,Housekeeping,Pending,SC,SC,Needs attention,SCR Express,Dirty toilets,Open,cnw_sc_sc

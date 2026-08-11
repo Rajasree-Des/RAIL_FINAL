@@ -1,0 +1,24 @@
+S.No.,Train Name,Owning Zone,Owning Division,Train No.,Received,% Share,Closed,% Closed,Pending,Average Rating
+1,Rajdhani Express,Northern Railway,Delhi Division,12345,150,12.5,120,80.0,30,4.2
+2,Shatabdi Express,Northern Railway,Delhi Division,12346,140,11.7,110,78.6,30,4.1
+3,Duronto Express,Central Railway,Mumbai Division,12347,130,10.8,100,76.9,30,4.0
+4,Garib Rath,East Central Railway,Patna Division,12348,125,10.4,95,76.0,30,3.9
+5,Jan Shatabdi,South Central Railway,Secunderabad Division,12349,120,10.0,90,75.0,30,3.8
+6,Sampark Kranti,Western Railway,Mumbai Division,12350,115,9.6,85,73.9,30,3.7
+7,Superfast Express,Southern Railway,Chennai Division,12351,110,9.2,80,72.7,30,3.6
+8,Mail Express,Eastern Railway,Howrah Division,12352,105,8.8,75,71.4,30,3.5
+9,Passenger Train,North Western Railway,Jaipur Division,12353,100,8.3,70,70.0,30,3.4
+10,Local Express,South Eastern Railway,Kharagpur Division,12354,95,7.9,65,68.4,30,3.3
+11,Intercity Express,South Central Railway,Vijayawada Division,12355,90,7.5,60,66.7,30,3.2
+12,AC Express,Northeast Frontier Railway,Guwahati Division,12356,85,7.1,55,64.7,30,3.1
+13,Premium Train,East Coast Railway,Bhubaneswar Division,12357,80,6.7,50,62.5,30,3.0
+14,Humsafar Express,West Central Railway,Jabalpur Division,12358,75,6.3,45,60.0,30,2.9
+15,Tejas Express,North Central Railway,Allahabad Division,12359,70,5.8,40,57.1,30,2.8
+16,Vande Bharat,South Western Railway,Bangalore Division,12360,65,5.4,35,53.8,30,2.7
+17,Double Decker,Central Railway,Nagpur Division,12361,60,5.0,30,50.0,30,2.6
+18,Antyodaya Express,South Central Railway,Guntakal Division,12362,55,4.6,25,45.5,30,2.5
+19,Uday Express,Northern Railway,Lucknow Division,12363,50,4.2,20,40.0,30,2.4
+20,Clone Train,Western Railway,Ahmedabad Division,12364,45,3.8,15,33.3,30,2.3
+21,Holiday Special,Southern Railway,Trichy Division,12365,40,3.3,10,25.0,30,2.2
+22,Festival Train,Eastern Railway,Sealdah Division,12366,35,2.9,5,14.3,30,2.1
+23,Total,,,Total,1780,,,,,

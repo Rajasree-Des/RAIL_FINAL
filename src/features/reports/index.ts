@@ -1,0 +1,1 @@
+export { GeneratedReportsPage } from "./GeneratedReportsPage";

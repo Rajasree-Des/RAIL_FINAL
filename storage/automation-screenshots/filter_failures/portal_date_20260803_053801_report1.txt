@@ -1,0 +1,11 @@
+run_id=run-1
+report_slug=report1
+source_name=comprehensive
+error_code=PORTAL_FROM_DATE_FIELD_NOT_FOUND
+expected_from_date=2026-07-25
+actual_from_date=
+actual_to_date=
+selector_used=None
+retry_count=0
+url=<MagicMock name='mock.url' id='2776670490640'>
+timestamp=20260803_053801

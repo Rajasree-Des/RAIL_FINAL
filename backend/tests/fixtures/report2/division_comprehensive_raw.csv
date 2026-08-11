@@ -1,0 +1,29 @@
+S.No.,Organisation,Opening Balance,Received,% Share,Closed,Closing Balance,% Disposal,Avg. Disposal Time,Avg. Rating,Avg. Pendency Time,Forwarded,Avg. FRT
+1,DELHI DIVISION (Northern Railway),15,850,9.12,820,45,96.47,0:38,Satisfactory,0:20,920,0:15
+2,LUCKNOW DIVISION (North Eastern Railway),10,720,7.72,680,50,94.44,0:35,Satisfactory,0:18,750,0:12
+3,MUMBAI DIVISION (Central Railway),12,680,7.29,650,42,95.59,0:42,Satisfactory,0:22,700,0:16
+4,CHENNAI DIVISION (Southern Railway),8,620,6.65,590,38,95.16,0:30,Satisfactory,0:16,640,0:11
+5,KOLKATA DIVISION (Eastern Railway),9,580,6.22,550,39,94.83,0:28,Satisfactory,0:15,600,0:10
+6,SECUNDERABAD DIVISION (South Central Railway),7,540,5.79,510,37,94.44,0:25,Satisfactory,0:14,560,0:09
+7,PATNA DIVISION (East Central Railway),6,510,5.47,480,36,94.12,0:32,Satisfactory,0:17,530,0:13
+8,JAIPUR DIVISION (North Western Railway),5,480,5.15,450,35,93.75,0:29,Satisfactory,0:16,500,0:11
+9,HYDERABAD DIVISION (South Central Railway),4,450,4.83,420,34,93.33,0:26,Satisfactory,0:15,470,0:10
+10,SCR - VIJAYAWADA DIVISION (South Central Railway),3,420,4.51,390,33,92.86,0:24,Satisfactory,0:14,440,0:09
+11,BANGALORE DIVISION (South Western Railway),4,400,4.29,370,34,92.50,0:22,Satisfactory,0:13,420,0:08
+12,PUNE DIVISION (Central Railway),3,380,4.08,350,33,92.11,0:21,Satisfactory,0:12,400,0:08
+13,AHMEDABAD DIVISION (Western Railway),2,360,3.86,330,32,91.67,0:20,Satisfactory,0:11,380,0:07
+14,GUNTAKAL DIVISION (South Central Railway),2,340,3.65,310,32,91.18,0:19,Satisfactory,0:11,360,0:07
+15,BHOPAL DIVISION (West Central Railway),1,320,3.43,290,31,90.63,0:18,Satisfactory,0:10,340,0:06
+16,NAGPUR DIVISION (Central Railway),1,300,3.22,270,31,90.00,0:17,Satisfactory,0:10,320,0:06
+17,KANPUR DIVISION (North Central Railway),1,280,3.00,250,31,89.29,0:16,Satisfactory,0:09,300,0:05
+18,ALLAHABAD DIVISION (North Central Railway),1,260,2.79,230,31,88.46,0:15,Satisfactory,0:09,280,0:05
+19,VARANASI DIVISION (North Eastern Railway),0,240,2.57,210,30,87.50,0:14,Satisfactory,0:08,260,0:04
+20,AGRA DIVISION (North Central Railway),0,220,2.36,190,30,86.36,0:13,Satisfactory,0:08,240,0:04
+21,JODHPUR DIVISION (North Western Railway),0,200,2.15,170,30,85.00,0:12,Satisfactory,0:07,220,0:03
+22,KOTA DIVISION (West Central Railway),0,180,1.93,150,30,83.33,0:11,Satisfactory,0:07,200,0:03
+23,BIKANER DIVISION (North Western Railway),0,160,1.72,130,30,81.25,0:10,Satisfactory,0:06,180,0:02
+24,FIROZPUR DIVISION (Northern Railway),0,140,1.50,110,30,78.57,0:09,Satisfactory,0:06,160,0:02
+25,AMBALA DIVISION (Northern Railway),0,120,1.29,90,30,75.00,0:08,Satisfactory,0:05,140,0:01
+26,JALANDHAR DIVN (Northern Railway),0,100,1.07,70,30,70.00,0:07,Satisfactory,0:05,120,0:01
+27,MORADABAD DIVISION (Northern Railway),0,80,0.86,50,30,62.50,0:06,Satisfactory,0:04,100,0:01
+28,Total,,9320,,8660,,,,,,,

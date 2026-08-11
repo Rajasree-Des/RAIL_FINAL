@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "sections": {
+    "report10_cw": {
+      "selected_column_ids": [
+        "sno",
+        "division",
+        "received",
+        "share_percent",
+        "closed",
+        "closing_balance",
+        "disposal_percent",
+        "avg_disposal_time",
+        "avg_rating",
+        "avg_pendency_time"
+      ]
+    },
+    "report11_security": {
+      "selected_column_ids": [
+        "sno",
+        "division",
+        "received",
+        "share_percent",
+        "closed",
+        "closing_balance",
+        "disposal_percent",
+        "avg_disposal_time",
+        "avg_rating",
+        "avg_pendency_time"
+      ]
+    },
+    "report12_punctuality": {
+      "selected_column_ids": [
+        "sno",
+        "division",
+        "received",
+        "share_percent",
+        "closed",
+        "closing_balance",
+        "disposal_percent",
+        "avg_disposal_time",
+        "avg_rating",
+        "avg_pendency_time"
+      ]
+    },
+    "report13_electrical": {
+      "selected_column_ids": [
+        "sno",
+        "division",
+        "received",
+        "share_percent",
+        "closed",
+        "closing_balance",
+        "disposal_percent",
+        "avg_disposal_time",
+        "avg_rating",
+        "avg_pendency_time"
+      ]
+    }
+  },
+  "selected_column_ids": [
+    "sno",
+    "division",
+    "received",
+    "share_percent",
+    "closed",
+    "closing_balance",
+    "disposal_percent",
+    "avg_disposal_time",
+    "avg_rating",
+    "avg_pendency_time"
+  ],
+  "column_order": [
+    "sno",
+    "division",
+    "received",
+    "share_percent",
+    "closed",
+    "closing_balance",
+    "disposal_percent",
+    "avg_disposal_time",
+    "avg_rating",
+    "avg_pendency_time"
+  ],
+  "configuration_source": "manual_snapshot",
+  "date_from": "2026-08-02",
+  "date_to": "2026-08-02",
+  "snapshot_hash": "d55182d37aa8c2dd",
+  "export_format": "xlsx",
+  "config_overrides": {
+    "requested_formats": [
+      "xlsx",
+      "pdf"
+    ]
+  },
+  "filter_conditions": []
+}
