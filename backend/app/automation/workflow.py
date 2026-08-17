@@ -334,7 +334,7 @@ async def extract_with_retry(
                 )
             await generator.generate_report(report_root, page)
 
-            if not await generator.verify_report_displayed(report_root):
+            if not await generator.wait_for_report_displayed(report_root, page):
                 log_automation_event(
                     logger,
                     "extraction_retry_failed",
@@ -507,7 +507,7 @@ async def attempt_feedback_extract(
     log_phase1_submit_clicked(run_id, "report1", "feedback")
 
     await generator.generate_report(report_root, page)
-    if not await generator.verify_report_displayed(report_root):
+    if not await generator.wait_for_report_displayed(report_root, page):
         return ExtractionResult(
             success=False,
             error="Feedback report did not display after generate",
@@ -748,17 +748,19 @@ async def regenerate_comprehensive_for_pdf(
         await verify_mis_session_or_raise(session, page, "comprehensive_regenerate")
         await navigation.navigate_to_report(page, REPORT_1)
 
-        try:
-            await page.wait_for_load_state("networkidle", timeout=10_000)
-        except Exception:
-            pass
+        from app.automation.page_wait import wait_for_portal_settle, wait_for_report_form_controls
 
         report_root = await filter_service.get_report_root(page)
+        await wait_for_report_form_controls(page, report_slug="report1")
 
         applied_values = await _apply_report1_filters_fast(report_root)
 
-        from app.automation.wait_utils import tracked_sleep
-        await tracked_sleep(0.1, reason="regen_fast_filters_settle")
+        await wait_for_portal_settle(
+            report_root,
+            page,
+            reason="regen_fast_filters_settle",
+            report_slug="report1",
+        )
 
         log_automation_event(
             logger,
@@ -781,14 +783,10 @@ async def regenerate_comprehensive_for_pdf(
         )
         await generator.generate_report(report_root, page)
 
-        await page.wait_for_timeout(500)
-
-        if not await generator.verify_report_displayed(report_root):
-            await page.wait_for_timeout(1000)
-            if not await generator.verify_report_displayed(report_root):
-                raise ReportGenerationError(
-                    "Comprehensive report did not display after regenerate before PDF"
-                )
+        if not await generator.wait_for_report_displayed(report_root, page):
+            raise ReportGenerationError(
+                "Comprehensive report did not display after regenerate before PDF"
+            )
         row_count = await generator.count_rows(report_root)
         if row_count is None or row_count <= 0:
             raise ReportGenerationError(

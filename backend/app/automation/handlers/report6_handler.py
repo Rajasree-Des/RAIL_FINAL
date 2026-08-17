@@ -215,8 +215,30 @@ class Report6Handler(Report5Handler):
         all-zone Total cell (~113 rows) instead of SCR Station (~6).
         """
         del full  # retry path uses the same full filter set
-        already_on_feedback = "mis_reports/report6" in page.url
-        if not already_on_feedback:
+        if "mis_reports/report6" in page.url:
+            # Reload tab 6 after Train mode so From/To Date fields reset before Station.
+            target_url = self.navigation.build_report_url(page.url, report.page_path)
+            log_automation_event(
+                logger,
+                "report6_station_tab_reload",
+                report=report.slug,
+                target_url=target_url,
+                reason="reset_dates_after_train_mode",
+            )
+            try:
+                await page.goto(target_url, wait_until="domcontentloaded", timeout=30_000)
+            except Exception as exc:
+                log_automation_event(
+                    logger,
+                    "report6_station_tab_reload_failed",
+                    report=report.slug,
+                    error=str(exc),
+                )
+                await self.navigation.navigate_to_report(page, report)
+            page = await self.ensure_mis_page(
+                page, session, f"{report.slug}_after_reload", report=report
+            )
+        elif not await self.navigation.verify_report_page(page, report):
             await self.navigation.navigate_to_report(page, report)
             page = await self.ensure_mis_page(
                 page, session, f"{report.slug}_after_nav", report=report

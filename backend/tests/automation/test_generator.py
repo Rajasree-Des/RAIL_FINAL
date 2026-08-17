@@ -102,6 +102,38 @@ async def test_find_generate_button_prefers_report_submit_over_navigation_search
 
 
 @pytest.mark.asyncio
+async def test_wait_for_report_displayed_polls_until_visible():
+    service = ReportGeneratorService()
+    root = MagicMock()
+    page = MagicMock()
+
+    calls = {"count": 0}
+
+    async def verify_side_effect(*_args, **_kwargs):
+        calls["count"] += 1
+        return calls["count"] >= 2
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(service, "verify_report_displayed", AsyncMock(side_effect=verify_side_effect))
+        mp.setattr(
+            "app.automation.generator.wait_for_loaders",
+            AsyncMock(),
+        )
+        mp.setattr(
+            "app.automation.generator._count_table_rows",
+            AsyncMock(return_value=5),
+        )
+        ok = await service.wait_for_report_displayed(
+            root,
+            page,
+            timeout_seconds=1.0,
+        )
+
+    assert ok is True
+    assert calls["count"] >= 2
+
+
+@pytest.mark.asyncio
 async def test_count_rows():
     service = ReportGeneratorService()
     root = MagicMock()

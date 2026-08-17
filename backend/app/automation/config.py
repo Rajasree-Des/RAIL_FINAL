@@ -76,6 +76,32 @@ class AutomationConfig(BaseSettings):
         validation_alias=AliasChoices("OUTPUT_PDF_DIR"),
         description="Directory for processed PDF output",
     )
+    railmadad_normal_load_timeout: float = Field(
+        default=20.0,
+        ge=1.0,
+        validation_alias=AliasChoices("RAILMADAD_NORMAL_LOAD_TIMEOUT"),
+        description="Normal adaptive wait before entering slow-load extension (seconds)",
+    )
+    railmadad_slow_load_timeout: float = Field(
+        default=70.0,
+        ge=1.0,
+        validation_alias=AliasChoices("RAILMADAD_SLOW_LOAD_TIMEOUT"),
+        description="Maximum total adaptive wait for slow RailMadad data loads (seconds)",
+    )
+    railmadad_poll_interval_ms: int = Field(
+        default=500,
+        ge=100,
+        le=2000,
+        validation_alias=AliasChoices("RAILMADAD_POLL_INTERVAL_MS"),
+        description="Poll interval for adaptive RailMadad result waits (milliseconds)",
+    )
+    railmadad_stability_interval_ms: int = Field(
+        default=750,
+        ge=200,
+        le=2000,
+        validation_alias=AliasChoices("RAILMADAD_STABILITY_INTERVAL_MS"),
+        description="Pause between fingerprint reads for table stability (milliseconds)",
+    )
 
 
 config = AutomationConfig()

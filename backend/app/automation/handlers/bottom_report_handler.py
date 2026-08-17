@@ -41,7 +41,7 @@ from app.automation.reports import ReportDefinition
 from app.automation.run_context import get_run_context
 from app.automation.schemas import ReportResult
 from app.automation.utils import ensure_directory, log_automation_event, resolve_report_dir
-from app.automation.wait_utils import tracked_sleep
+from app.automation.page_wait import wait_for_portal_settle
 
 from .base import BaseReportHandler
 from .comprehensive1013_handler import Comprehensive1013Handler
@@ -269,7 +269,12 @@ class BottomReportHandler(BaseReportHandler):
                 grouped_train_total=agg.grouped_train_total,
             )
             division_results.append(div_result)
-            await tracked_sleep(0.2, reason="bottom_division_settle")
+            await wait_for_portal_settle(
+                report_root,
+                page,
+                reason="bottom_division_settle",
+                report_slug="bottom-report",
+            )
 
         return SectionResult(
             section_id=section_id,
@@ -360,7 +365,12 @@ class BottomReportHandler(BaseReportHandler):
                     grouped_train_total=agg.grouped_train_total,
                 )
             )
-            await tracked_sleep(0.2, reason="bottom_water_division_settle")
+            await wait_for_portal_settle(
+                report_root,
+                page,
+                reason="bottom_water_division_settle",
+                report_slug=report.slug,
+            )
 
         return SectionResult(
             section_id=section_id,

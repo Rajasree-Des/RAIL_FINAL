@@ -53,6 +53,8 @@ class RunTiming:
     reports: dict[str, ReportTiming] = field(default_factory=dict)
     fixed_sleep_seconds: float = 0.0
     fixed_sleep_events: list[dict[str, Any]] = field(default_factory=list)
+    slow_load_events: list[dict[str, Any]] = field(default_factory=list)
+    portal_wait_seconds: float = 0.0
     retry_count: int = 0
     _active: dict[str, float] = field(default_factory=dict, repr=False)
 
@@ -64,6 +66,12 @@ class RunTiming:
             self.fixed_sleep_events.append(
                 {"reason": reason, "seconds": round(seconds, 3)}
             )
+
+    def record_slow_load_event(self, event: dict[str, Any]) -> None:
+        self.slow_load_events.append(dict(event))
+        total = float(event.get("total_elapsed") or 0.0)
+        if total > 0:
+            self.portal_wait_seconds = round(self.portal_wait_seconds + total, 3)
 
     def record_retry(self, *, reason: str = "") -> None:
         self.retry_count += 1
@@ -155,6 +163,10 @@ class RunTiming:
             portal_wait_seconds=perf.get("portal_wait_seconds"),
             application_seconds=perf.get("application_seconds"),
             fixed_sleep_seconds=perf.get("fixed_sleep_seconds"),
+            adaptive_portal_wait_seconds=perf.get("adaptive_portal_wait_seconds"),
+            slow_load_event_count=perf.get("slow_load_event_count"),
+            longest_portal_wait_seconds=perf.get("longest_portal_wait_seconds"),
+            slowest_report=perf.get("slowest_report"),
         )
         self.write_json()
         self.write_performance_json(perf)
@@ -212,6 +224,8 @@ class RunTiming:
             key=lambda item: item[1].get("duration_seconds") or 0,
             default=(None, {}),
         )
+        slow_events = list(self.slow_load_events)
+        longest_wait = max((float(e.get("total_elapsed") or 0) for e in slow_events), default=0.0)
         return {
             "run_id": self.run_id,
             "started_at": self.started_at,
@@ -219,8 +233,13 @@ class RunTiming:
             "total_duration_seconds": self.total_duration_seconds,
             "portal_wait_seconds": round(portal, 3),
             "application_seconds": round(app, 3),
+            "adaptive_portal_wait_seconds": round(self.portal_wait_seconds, 3),
+            "slow_load_event_count": len(slow_events),
+            "longest_portal_wait_seconds": round(longest_wait, 3),
+            "slowest_report": critical[0],
             "fixed_sleep_seconds": self.fixed_sleep_seconds,
             "fixed_sleep_events": list(self.fixed_sleep_events),
+            "slow_load_events": slow_events,
             "retry_count": self.retry_count,
             "spans": dict(self.spans),
             "per_report": per_report,

@@ -33,10 +33,12 @@ from app.automation.reports import ReportDefinition
 from app.automation.run_context import get_run_context
 from app.automation.schemas import ReportResult
 from app.automation.table_extractor import TableExtractor
-from app.automation.table_refresh import table_fingerprint, wait_for_table_refresh
+from app.automation.page_wait import wait_for_portal_settle, wait_for_report_form_controls
+from app.automation.railmadad_wait import verify_report_filters
+from app.automation.table_refresh import require_fingerprint_changed, table_fingerprint
 from app.automation.table_sort import ReceivedSortError
 from app.automation.utils import ensure_directory, log_automation_event, resolve_report_dir
-from app.automation.wait_utils import poll_until, tracked_sleep
+from app.automation.wait_utils import poll_until
 
 from .base import BaseReportHandler
 
@@ -302,7 +304,14 @@ class Comprehensive1013Handler(BaseReportHandler):
                 await self._save_section_failure_artifacts(
                     page, section_config.section_id, attempt, last_error
                 )
-                await tracked_sleep(0.2 * attempt, reason="comprehensive1013_section_retry")
+                report_root = await self.filter_service.get_report_root(page)
+                await wait_for_portal_settle(
+                    report_root,
+                    page,
+                    timeout_seconds=min(0.5 * attempt, 2.0),
+                    reason="comprehensive1013_section_retry",
+                    report_slug="comprehensive-10-13",
+                )
 
         return {
             "section_id": section_config.section_id,
@@ -328,12 +337,8 @@ class Comprehensive1013Handler(BaseReportHandler):
             page, session, f"{report.slug}_{section_config.section_id}_before_submit"
         )
 
-        try:
-            await page.wait_for_load_state("networkidle", timeout=10_000)
-        except Exception:
-            pass
-
         report_root = await self.filter_service.get_report_root(page)
+        await wait_for_report_form_controls(page, report_slug=report.slug)
 
         log_automation_event(
             logger,
@@ -374,23 +379,25 @@ class Comprehensive1013Handler(BaseReportHandler):
             old_fingerprint=old_fp[:120] if old_fp else "",
         )
 
-        await self.generator.generate_report(report_root, page)
+        await self.generator.generate_report(report_root, page, report_slug=report.slug)
 
-        # generate_report may soft-succeed while the previous section's table is
-        # still visible (Punctuality/Electrical AJAX is often slow). Keep polling
-        # for a real fingerprint change before extracting.
-        refreshed = await wait_for_table_refresh(
-            report_root,
-            page,
-            old_fp,
-            report_slug=report.slug,
-            timeout_seconds=30.0,
-        )
         new_fp = await table_fingerprint(report_root)
-        if old_fp and (not refreshed) and new_fp == old_fp:
-            raise ReportGenerationError(
-                f"Report {report.slug} table did not refresh after generate"
-            )
+        require_fingerprint_changed(old_fp, new_fp, report_slug=report.slug)
+
+        expected_filters = {
+            "zone": "South Central Railway",
+            "division": "ALL",
+            "view": "Division Wise",
+        }
+        if section_config.complaint_type and section_config.complaint_type != "ALL":
+            expected_filters["type"] = section_config.complaint_type
+        filter_err = await verify_report_filters(
+            report_root,
+            expected_filters,
+            report_slug=report.slug,
+        )
+        if filter_err:
+            raise ReportGenerationError(filter_err)
 
         if not await self._wait_for_report_displayed(report_root, page):
             raise ReportGenerationError(
@@ -402,7 +409,7 @@ class Comprehensive1013Handler(BaseReportHandler):
             "comprehensive1013_new_table_verified",
             section_id=section_config.section_id,
             attempt=attempt,
-            refreshed=bool(refreshed or (new_fp != old_fp)),
+            refreshed=True,
         )
         return report_root
 
@@ -607,7 +614,9 @@ class Comprehensive1013Handler(BaseReportHandler):
 
         base_values = await report_root.evaluate(base_js)
         applied_values.update(base_values)
-        await tracked_sleep(0.05, reason="base_filters_settle")
+        await wait_for_portal_settle(
+            report_root, page, reason="base_filters_settle", report_slug="comprehensive-10-13"
+        )
 
         log_automation_event(
             logger,
@@ -644,7 +653,9 @@ class Comprehensive1013Handler(BaseReportHandler):
             dept_labels,
         )
         applied_values["department"] = dept_result
-        await tracked_sleep(0.15, reason="department_change_settle")
+        await wait_for_portal_settle(
+            report_root, page, reason="department_change_settle", report_slug="comprehensive-10-13"
+        )
 
         log_automation_event(
             logger,
@@ -681,7 +692,9 @@ class Comprehensive1013Handler(BaseReportHandler):
             mode_labels,
         )
         applied_values["mode"] = mode_result
-        await tracked_sleep(0.15, reason="mode_change_settle")
+        await wait_for_portal_settle(
+            report_root, page, reason="mode_change_settle", report_slug="comprehensive-10-13"
+        )
 
         log_automation_event(
             logger,
@@ -695,7 +708,7 @@ class Comprehensive1013Handler(BaseReportHandler):
 
         # Stage 5: Apply Type with exact portal labels (including space after hyphen)
         type_result = await self._select_type_with_verification(
-            report_root, section_config
+            report_root, page, section_config
         )
         applied_values["type"] = type_result
 
@@ -714,44 +727,47 @@ class Comprehensive1013Handler(BaseReportHandler):
         section_id: str,
     ) -> None:
         """Wait for Type dropdown options to stabilize after Dept/Mode changes."""
-        prev_count = -1
-        stable_checks = 0
-        max_checks = 10
+        state = {"prev_count": -1, "stable_checks": 0}
 
-        for _ in range(max_checks):
+        async def _stable() -> bool:
             current_count = await report_root.evaluate(
                 """() => {
                     const el = document.querySelector('#complaintTypeInput');
                     return el ? el.options.length : 0;
                 }"""
             )
+            if current_count == state["prev_count"] and current_count > 0:
+                state["stable_checks"] += 1
+                return state["stable_checks"] >= 2
+            state["prev_count"] = current_count
+            state["stable_checks"] = 0
+            return False
 
-            if current_count == prev_count and current_count > 0:
-                stable_checks += 1
-                if stable_checks >= 2:
-                    log_automation_event(
-                        logger,
-                        "comprehensive1013_type_dropdown_stable",
-                        section_id=section_id,
-                        option_count=current_count,
-                    )
-                    return
-            else:
-                stable_checks = 0
-
-            prev_count = current_count
-            await tracked_sleep(0.1, reason="type_dropdown_stabilize")
-
-        log_automation_event(
-            logger,
-            "comprehensive1013_type_dropdown_stabilize_timeout",
-            section_id=section_id,
-            final_count=prev_count,
+        ok = await poll_until(
+            _stable,
+            interval_seconds=0.08,
+            timeout_seconds=3.0,
+            reason="type_dropdown_stabilize",
         )
+        if ok:
+            log_automation_event(
+                logger,
+                "comprehensive1013_type_dropdown_stable",
+                section_id=section_id,
+                option_count=state["prev_count"],
+            )
+        else:
+            log_automation_event(
+                logger,
+                "comprehensive1013_type_dropdown_stabilize_timeout",
+                section_id=section_id,
+                final_count=state["prev_count"],
+            )
 
     async def _select_type_with_verification(
         self,
         report_root: Any,
+        page: "Page",
         section_config: SectionConfig,
     ) -> str:
         """Select Type value and verify selection with exact portal labels.
@@ -881,7 +897,12 @@ class Comprehensive1013Handler(BaseReportHandler):
                     f"Available options: {[o.get('text') for o in (available_options or [])[:10]]}"
                 )
 
-        await tracked_sleep(0.05, reason="type_selection_settle")
+        await wait_for_portal_settle(
+            report_root,
+            page,
+            reason="type_selection_settle",
+            report_slug="comprehensive-10-13",
+        )
         return selected_type
 
     async def _reset_stale_filters(
@@ -923,7 +944,12 @@ class Comprehensive1013Handler(BaseReportHandler):
                 section_id=section_config.section_id,
                 error=str(exc),
             )
-        await tracked_sleep(0.03, reason="filters_reset_settle")
+        await wait_for_portal_settle(
+            report_root,
+            page,
+            reason="filters_reset_settle",
+            report_slug="comprehensive-10-13",
+        )
 
     async def _wait_for_received_header(self, page: "Page", section_id: str) -> None:
         try:

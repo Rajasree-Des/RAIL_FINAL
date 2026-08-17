@@ -383,19 +383,21 @@ async def test_submit_section_waits_for_delayed_fingerprint_change():
             return_value=None,
         ),
         patch(
+            "app.automation.handlers.comprehensive1013_handler.wait_for_report_form_controls",
+            new=AsyncMock(return_value=True),
+        ),
+        patch(
             "app.automation.handlers.comprehensive1013_handler.table_fingerprint",
             new=AsyncMock(side_effect=["OLD##sec", "NEW##pun"]),
         ),
         patch(
-            "app.automation.handlers.comprehensive1013_handler.wait_for_table_refresh",
-            new=AsyncMock(return_value=True),
-        ) as wait_refresh,
+            "app.automation.handlers.comprehensive1013_handler.verify_report_filters",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         result_root = await handler._submit_section_once(
             page, session, REPORT_10_13_COMPREHENSIVE, section, attempt=1
         )
 
     assert result_root is report_root
-    wait_refresh.assert_awaited()
-    assert wait_refresh.await_args.kwargs.get("timeout_seconds") == 30.0
     handler.generator.generate_report.assert_awaited_once()

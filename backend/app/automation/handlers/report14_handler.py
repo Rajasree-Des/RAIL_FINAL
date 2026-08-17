@@ -47,7 +47,7 @@ from app.automation.utils import (
     log_automation_event,
     resolve_report_dir,
 )
-from app.automation.wait_utils import tracked_sleep
+from app.automation.page_wait import wait_for_cascade_settle, wait_for_portal_settle
 
 from .base import BaseReportHandler
 
@@ -331,14 +331,18 @@ class Report14Handler(BaseReportHandler):
             )
             log_phase1_submit_clicked(run_id, report.slug, source_name)
 
-            await self.generator.generate_report(report_root, page)
-            await page.wait_for_timeout(800)
-            if not await self.generator.verify_report_displayed(report_root):
-                await page.wait_for_timeout(1500)
-                if not await self.generator.verify_report_displayed(report_root):
-                    raise ReportGenerationError(
-                        f"Report {report.slug} did not display after generate ({source_name})"
-                    )
+            await self.generator.generate_report(
+                report_root, page, report_slug=report.slug
+            )
+            if not await self.generator.wait_for_report_displayed(
+                report_root,
+                page,
+                report_slug=report.slug,
+                timeout_seconds=30.0,
+            ):
+                raise ReportGenerationError(
+                    f"Report {report.slug} did not display after generate ({source_name})"
+                )
 
             try:
                 await self.click_received_twice(
@@ -601,7 +605,12 @@ class Report14Handler(BaseReportHandler):
                 applied = {}
 
             # After Zone change, Division options may repopulate.
-            await tracked_sleep(0.25, reason="report14_zone_cascade")
+            await wait_for_cascade_settle(
+                report_root,
+                page,
+                field_name="zone",
+                report_slug=report_slug,
+            )
             try:
                 div_applied = await report_root.evaluate(
                     """() => {
@@ -707,7 +716,12 @@ class Report14Handler(BaseReportHandler):
                     error=str(exc),
                     applied=applied,
                 )
-                await tracked_sleep(0.4, reason="report14_filter_retry_wait")
+                await wait_for_portal_settle(
+                    report_root,
+                    page,
+                    reason="report14_filter_retry_wait",
+                    report_slug=report_slug,
+                )
 
         if last_error is not None:
             raise last_error

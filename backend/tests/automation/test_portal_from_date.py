@@ -423,7 +423,7 @@ async def test_report1_apply_filters_and_submit_calls_helper():
     handler.filter_service.validate_mandatory = AsyncMock()
     handler.generator.generate_report = AsyncMock()
     handler.generator.count_rows = AsyncMock(return_value=5)
-    handler.generator.verify_report_displayed = AsyncMock(return_value=True)
+    handler.generator.wait_for_report_displayed = AsyncMock(return_value=True)
     handler.navigation.verify_report_page = AsyncMock(return_value=True)
 
     with patch(
@@ -467,7 +467,7 @@ async def test_report1_feedback_extract_calls_helper():
     discovery.discover_fields = AsyncMock(return_value=[])
     generator = MagicMock()
     generator.generate_report = AsyncMock()
-    generator.verify_report_displayed = AsyncMock(return_value=False)
+    generator.wait_for_report_displayed = AsyncMock(return_value=False)
 
     with patch(
         "app.automation.workflow.build_filters_from_discovery",
@@ -511,7 +511,7 @@ async def test_report2_feedback_division_extract_calls_helper():
     discovery = MagicMock()
     generator = MagicMock()
     generator.generate_report = AsyncMock()
-    generator.verify_report_displayed = AsyncMock(return_value=False)
+    generator.wait_for_report_displayed = AsyncMock(return_value=False)
 
     with patch(
         "app.automation.report2_feedback.apply_previous_from_date",

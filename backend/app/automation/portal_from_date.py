@@ -227,6 +227,51 @@ async def _bootstrap_phase1_to_date(
     return actual_to_date
 
 
+async def _apply_phase3_date_fields(
+    from_locator: Locator,
+    to_locator: Locator,
+    *,
+    expected_from_date: str,
+    expected_to_date: str,
+) -> tuple[str, str, int]:
+    """Apply From/To on Report 6 feedback tab; portal JS may reset To after From changes."""
+    from app.automation.wait_utils import poll_until
+
+    retry_count = 0
+    actual_from_date = ""
+    actual_to_date = ""
+
+    for attempt in range(4):
+        await _clear_and_fill(from_locator, expected_from_date)
+        await _wait_for_to_date_populated(to_locator, timeout_ms=2_000, poll_ms=100)
+        await _clear_and_fill(to_locator, expected_to_date)
+
+        async def _matches() -> bool:
+            nonlocal actual_from_date, actual_to_date
+            actual_from_date = await _read_input_value(from_locator)
+            actual_to_date = await _read_input_value(to_locator)
+            return (
+                actual_from_date == expected_from_date
+                and actual_to_date == expected_to_date
+            )
+
+        if await poll_until(_matches, interval_seconds=0.1, timeout_seconds=1.5, reason="phase3_date_settle"):
+            return actual_from_date, actual_to_date, retry_count
+
+        retry_count += 1
+        await _native_setter_fill(from_locator, expected_from_date)
+        await _native_setter_fill(to_locator, expected_to_date)
+        actual_from_date = await _read_input_value(from_locator)
+        actual_to_date = await _read_input_value(to_locator)
+        if (
+            actual_from_date == expected_from_date
+            and actual_to_date == expected_to_date
+        ):
+            return actual_from_date, actual_to_date, retry_count
+
+    return actual_from_date, actual_to_date, retry_count
+
+
 async def save_portal_from_date_failure_artifacts(
     page: Page,
     report_slug: str,
@@ -239,6 +284,7 @@ async def save_portal_from_date_failure_artifacts(
     actual_to_date: str,
     selector_used: str | None,
     retry_count: int,
+    expected_to_date: str = "",
 ) -> str | None:
     dest = ensure_directory(Path(config.screenshots_dir) / "filter_failures")
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
@@ -255,6 +301,7 @@ async def save_portal_from_date_failure_artifacts(
         f"source_name={source_name}",
         f"error_code={error_code}",
         f"expected_from_date={expected_from_date}",
+        f"expected_to_date={expected_to_date}",
         f"actual_from_date={actual_from_date}",
         f"actual_to_date={actual_to_date}",
         f"selector_used={selector_used}",
@@ -400,8 +447,16 @@ async def apply_portal_date_range(
     await _clear_and_fill(from_locator, expected_from_date)
     await _clear_and_fill(to_locator, expected_to_date)
 
-    actual_from_date = await _read_input_value(from_locator)
-    actual_to_date = await _read_input_value(to_locator)
+    if _is_phase3_report(report_slug):
+        actual_from_date, actual_to_date, retry_count = await _apply_phase3_date_fields(
+            from_locator,
+            to_locator,
+            expected_from_date=expected_from_date,
+            expected_to_date=expected_to_date,
+        )
+    else:
+        actual_from_date = await _read_input_value(from_locator)
+        actual_to_date = await _read_input_value(to_locator)
 
     _log_from_date_event(
         report_slug,
@@ -416,15 +471,16 @@ async def apply_portal_date_range(
         expected_to_date=expected_to_date,
     )
 
-    if actual_from_date != expected_from_date:
-        retry_count += 1
-        await _native_setter_fill(from_locator, expected_from_date)
-        actual_from_date = await _read_input_value(from_locator)
+    if not _is_phase3_report(report_slug):
+        if actual_from_date != expected_from_date:
+            retry_count += 1
+            await _native_setter_fill(from_locator, expected_from_date)
+            actual_from_date = await _read_input_value(from_locator)
 
-    if actual_to_date != expected_to_date:
-        retry_count += 1
-        await _native_setter_fill(to_locator, expected_to_date)
-        actual_to_date = await _read_input_value(to_locator)
+        if actual_to_date != expected_to_date:
+            retry_count += 1
+            await _native_setter_fill(to_locator, expected_to_date)
+            actual_to_date = await _read_input_value(to_locator)
 
     if actual_from_date != expected_from_date or actual_to_date != expected_to_date:
         await _fail(
@@ -517,6 +573,7 @@ async def _fail(
         actual_to_date=actual_to_date,
         selector_used=selector_used,
         retry_count=retry_count,
+        expected_to_date=expected_to_date,
     )
     raise PortalFromDateError(error_code, message)
 

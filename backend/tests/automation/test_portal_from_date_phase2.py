@@ -220,7 +220,7 @@ async def test_report3_apply_filters_and_submit_calls_phase2_helper():
     handler.filter_service.validate_mandatory = AsyncMock()
     handler.generator.generate_report = AsyncMock()
     handler.generator.count_rows = AsyncMock(return_value=5)
-    handler.generator.verify_report_displayed = AsyncMock(return_value=True)
+    handler.generator.wait_for_report_displayed = AsyncMock(return_value=True)
     handler.navigation.verify_report_page = AsyncMock(return_value=True)
 
     with patch(
@@ -265,7 +265,7 @@ async def test_report4_submit_type_once_calls_phase2_helper():
     handler._wait_for_table_refresh = AsyncMock(return_value=True)
     handler._verify_type_selected = AsyncMock(return_value=True)
     handler.generator.generate_report = AsyncMock()
-    handler.generator.verify_report_displayed = AsyncMock(return_value=True)
+    handler.generator.wait_for_report_displayed = AsyncMock(return_value=True)
 
     type_config = MagicMock()
     type_config.name = "Security"
@@ -319,7 +319,7 @@ async def test_extract_with_retry_train_no_calls_phase2_helper():
     discovery.discover_fields = AsyncMock(return_value=[])
     generator = MagicMock()
     generator.generate_report = AsyncMock()
-    generator.verify_report_displayed = AsyncMock(return_value=True)
+    generator.wait_for_report_displayed = AsyncMock(return_value=True)
     session = MagicMock()
     session.verify_mis_session = AsyncMock(return_value=MagicMock())
 

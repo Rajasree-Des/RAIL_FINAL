@@ -18,7 +18,8 @@ from app.automation.report1_filters import (
 )
 from app.automation.selectors import selectors
 from app.automation.utils import ensure_directory, log_automation_event
-from app.automation.wait_utils import tracked_sleep
+from app.automation.page_wait import wait_for_cascade_settle
+from app.automation.wait_utils import poll_until
 from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
@@ -301,7 +302,7 @@ class FilterService:
             logger.warning("Timed out waiting for report form controls")
 
         # Portal report forms often load asynchronously inside an iframe
-        for _ in range(10):
+        async def _resolve_root() -> ReportRoot | None:
             iframe_count = await page.locator("iframe").count()
             for index in range(iframe_count):
                 frame_loc = page.frame_locator("iframe").nth(index)
@@ -339,10 +340,23 @@ class FilterService:
             if await page.locator("select, input, textarea").count() > 0:
                 log_automation_event(logger, "report_context_resolved", location="main_page")
                 return page
+            return None
 
-            await tracked_sleep(0.15, reason="report_root_iframe_poll")
+        async def _root_ready() -> bool:
+            return await _resolve_root() is not None
 
-        raise FilterError("Report form not found on the page (no iframe or main-page controls)")
+        if not await poll_until(
+            _root_ready,
+            interval_seconds=0.1,
+            timeout_seconds=12.0,
+            reason="report_root_iframe_poll",
+        ):
+            raise FilterError("Report form not found on the page (no iframe or main-page controls)")
+
+        root = await _resolve_root()
+        if root is None:
+            raise FilterError("Report form not found on the page (no iframe or main-page controls)")
+        return root
 
     @staticmethod
     async def get_report_frame(page: Page) -> ReportRoot:
@@ -399,9 +413,12 @@ class FilterService:
                 "view",
             }
             if cascading and changed:
-                delay_ms = min(config.filter_interaction_delay_ms, 80)
-                if delay_ms > 0:
-                    await tracked_sleep(delay_ms / 1000, reason="cascading_filter_settle")
+                await wait_for_cascade_settle(
+                    root,
+                    page,
+                    field_name=field.name,
+                    timeout_seconds=2.5,
+                )
                 if field.field_type == "select" and page is not None:
                     await self._wait_for_dependent_controls(page)
 

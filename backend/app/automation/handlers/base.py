@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 from app.automation.config import config
 from app.automation.filters import FilterDiscoveryService, FilterService
 from app.automation.generator import ReportGenerationError, ReportGeneratorService
+from app.automation.report_errors import ReportStageError
+from app.automation.table_refresh import require_fingerprint_changed, table_fingerprint
 from app.automation.navigation import NavigationService
 from app.automation.pdf_archiver import PdfArchiver
 from app.automation.processing.service import process_report
@@ -264,18 +266,28 @@ class BaseReportHandler(ABC):
                     source_name,
                 )
 
-            await self.generator.generate_report(report_root, page)
+            old_fp = await table_fingerprint(report_root)
+            await self.generator.generate_report(
+                report_root, page, report_slug=report.slug
+            )
 
-            await page.wait_for_timeout(500)
+            if not await self.generator.wait_for_report_displayed(
+                report_root,
+                page,
+                report_slug=report.slug,
+                timeout_seconds=config.railmadad_normal_load_timeout,
+            ):
+                raise ReportStageError(
+                    code=f"{report.slug}.display_timeout",
+                    message=f"Report {report.slug} did not display after generate",
+                    stage="result_display",
+                    report_slug=report.slug,
+                )
+
+            new_fp = await table_fingerprint(report_root)
+            require_fingerprint_changed(old_fp, new_fp, report_slug=report.slug)
 
             row_count = await self.generator.count_rows(report_root)
-
-            if not await self.generator.verify_report_displayed(report_root):
-                await page.wait_for_timeout(1000)
-                if not await self.generator.verify_report_displayed(report_root):
-                    raise ReportGenerationError(
-                        f"Report {report.slug} did not display after generate"
-                    )
 
             return report_root, applied_values, row_count
 

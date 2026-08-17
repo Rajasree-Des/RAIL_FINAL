@@ -92,6 +92,8 @@ async def test_failed_first_attempt_retries_with_full_filters(
     handler._wait_for_received_header = AsyncMock()
     handler._sort_received = AsyncMock()
     handler._save_type_failure_artifacts = AsyncMock()
+    handler.filter_service = MagicMock()
+    handler.filter_service.get_report_root = AsyncMock(return_value=MagicMock())
 
     csv_path = tmp_path / "report4_security_raw.csv"
     csv_path.write_text("h\n1\n", encoding="utf-8")
@@ -112,7 +114,7 @@ async def test_failed_first_attempt_retries_with_full_filters(
     session = MagicMock()
     cfg = _configs("Security")[0]
 
-    with patch("app.automation.handlers.report4_handler.tracked_sleep", new=AsyncMock()):
+    with patch("app.automation.handlers.report4_handler.wait_for_portal_settle", new=AsyncMock()):
         outcome = await handler._run_type_with_retry(
             page, session, REPORT_4_TYPES, cfg, tmp_path
         )
@@ -133,6 +135,8 @@ async def test_one_failed_type_does_not_abort_remaining(
     handler._wait_for_received_header = AsyncMock()
     handler._sort_received = AsyncMock()
     handler._save_type_failure_artifacts = AsyncMock()
+    handler.filter_service = MagicMock()
+    handler.filter_service.get_report_root = AsyncMock(return_value=MagicMock())
 
     async def extract_side_effect(report_root, report, type_config, extracted_dir):
         path = extracted_dir / f"report4_{type_slug(type_config.name)}_raw.csv"
@@ -174,7 +178,7 @@ async def test_one_failed_type_does_not_abort_remaining(
             "app.automation.handlers.report4_handler.get_type_configs",
             return_value=configs,
         ),
-        patch("app.automation.handlers.report4_handler.tracked_sleep", new=AsyncMock()),
+        patch("app.automation.handlers.report4_handler.wait_for_portal_settle", new=AsyncMock()),
         patch(
             "app.automation.handlers.report4_handler.get_run_context",
             return_value=None,
@@ -259,6 +263,8 @@ async def test_no_success_status_failed(handler: Report4Handler, tmp_path: Path)
     handler.navigation.navigate_to_report = AsyncMock()
     handler.ensure_mis_page = AsyncMock(side_effect=lambda page, session, ctx="", **kwargs: page)
     handler._save_type_failure_artifacts = AsyncMock()
+    handler.filter_service = MagicMock()
+    handler.filter_service.get_report_root = AsyncMock(return_value=MagicMock())
     handler._submit_type_once = AsyncMock(
         side_effect=ReportGenerationError("Report types did not display after generate")
     )
@@ -274,7 +280,7 @@ async def test_no_success_status_failed(handler: Report4Handler, tmp_path: Path)
             "app.automation.handlers.report4_handler.get_type_configs",
             return_value=configs,
         ),
-        patch("app.automation.handlers.report4_handler.tracked_sleep", new=AsyncMock()),
+        patch("app.automation.handlers.report4_handler.wait_for_portal_settle", new=AsyncMock()),
         patch(
             "app.automation.handlers.report4_handler.get_run_context",
             return_value=None,
@@ -529,9 +535,8 @@ async def test_submit_type_waits_for_delayed_fingerprint_change(handler: Report4
     handler.generator = MagicMock()
     handler.generator.generate_report = AsyncMock()
     handler.generator.verify_report_displayed = AsyncMock(return_value=True)
-    handler._verify_type_selected = AsyncMock(return_value=True)
 
-    fingerprints = ["OLD##SEC##row", "OLD##SEC##row", "NEW##CLN##row", "NEW##CLN##row"]
+    fingerprints = ["OLD##SEC##row", "NEW##CLN##row"]
 
     async def fp_side_effect(*_a, **_k):
         if fingerprints:
@@ -555,12 +560,8 @@ async def test_submit_type_waits_for_delayed_fingerprint_change(handler: Report4
             new=AsyncMock(side_effect=fp_side_effect),
         ),
         patch(
-            "app.automation.handlers.report4_handler.wait_for_table_refresh",
-            new=AsyncMock(return_value=True),
-        ) as wait_refresh,
-        patch(
-            "app.automation.handlers.report4_handler.tracked_sleep",
-            new=AsyncMock(),
+            "app.automation.handlers.report4_handler.verify_report_filters",
+            new=AsyncMock(return_value=None),
         ),
     ):
         result_root = await handler._submit_type_once(
@@ -568,6 +569,4 @@ async def test_submit_type_waits_for_delayed_fingerprint_change(handler: Report4
         )
 
     assert result_root is report_root
-    wait_refresh.assert_awaited()
-    assert wait_refresh.await_args.kwargs.get("timeout_seconds") == 30.0
     handler.generator.generate_report.assert_awaited_once()

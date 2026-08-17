@@ -114,7 +114,7 @@ async def attempt_feedback_division_extract(
 
     log_automation_event(logger, "report2_feedback_submit_clicked")
     await generator.generate_report(report_root, page)
-    if not await generator.verify_report_displayed(report_root):
+    if not await generator.wait_for_report_displayed(report_root, page):
         return ExtractionResult(
             success=False,
             error="Report 2 Feedback Division Wise report did not display after generate",

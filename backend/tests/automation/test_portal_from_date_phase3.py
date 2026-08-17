@@ -163,6 +163,46 @@ async def test_phase3_native_setter_retry():
 
 
 @pytest.mark.asyncio
+async def test_phase3_date_fields_retry_succeeds_when_to_date_sticks():
+    page = MagicMock()
+    root = MagicMock()
+    # Portal resets To to From once, then accepts To on retry round.
+    from_values = ["", "2026-07-25", "2026-07-25", "2026-07-25", "2026-07-25"]
+    to_values = ["", "2026-07-25", "2026-07-26", "2026-07-26"]
+
+    from_locator = _make_locator(input_values=from_values)
+    to_locator = _make_locator(input_values=to_values)
+
+    def locator_side_effect(selector: str):
+        child = MagicMock()
+        if "toDate" in selector or "To Date" in selector or selector == "#toInput":
+            child.first = to_locator
+        else:
+            child.first = from_locator
+        return child
+
+    root.locator = MagicMock(side_effect=locator_side_effect)
+    service = MagicMock()
+    service.get_report_root = AsyncMock(return_value=root)
+
+    from app.automation.date_range import ReportDateRange
+
+    ctx = RunContext(
+        run_id="run-6",
+        timing=RunTiming(run_id="run-6"),
+        report_from_dates={"scr-station": "2026-07-25"},
+        date_range=ReportDateRange.from_iso("2026-07-25", "2026-07-26"),
+    )
+    token = set_run_context(ctx)
+    try:
+        await apply_previous_from_date(
+            page, "run-6", "scr-station", "scr_station_feedback", filter_service=service
+        )
+    finally:
+        reset_run_context(token)
+
+
+@pytest.mark.asyncio
 async def test_phase3_blocks_when_to_date_changes():
     page = MagicMock()
     root = MagicMock()
@@ -214,7 +254,7 @@ async def test_report5_apply_filters_and_submit_calls_phase3_helper():
     handler.filter_service.validate_mandatory = AsyncMock()
     handler.generator.generate_report = AsyncMock()
     handler.generator.count_rows = AsyncMock(return_value=5)
-    handler.generator.verify_report_displayed = AsyncMock(return_value=True)
+    handler.generator.wait_for_report_displayed = AsyncMock(return_value=True)
     handler.navigation.verify_report_page = AsyncMock(return_value=True)
 
     with patch(
@@ -253,7 +293,12 @@ async def test_report6_apply_station_filters_calls_phase3_helper():
     report_root = MagicMock()
     handler.ensure_mis_page = AsyncMock(return_value=page)
     handler.navigation.navigate_to_report = AsyncMock()
-    handler.apply_filters_and_submit = AsyncMock(return_value=(report_root, {}, 5))
+    handler.navigation.build_report_url = MagicMock(
+        return_value="https://railmadad.test/rmmis/admin/home.jsp?page=/mis_reports/report6"
+    )
+    handler.navigation.verify_report_page = AsyncMock(return_value=True)
+    page.goto = AsyncMock()
+    page.url = "https://railmadad.test/rmmis/admin/home.jsp?page=/mis_reports/report6"
 
     with patch.object(handler, "apply_filters_and_submit", new_callable=AsyncMock) as mock_submit:
         mock_submit.return_value = (report_root, {}, 5)

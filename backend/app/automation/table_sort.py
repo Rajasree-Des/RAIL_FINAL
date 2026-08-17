@@ -7,26 +7,17 @@ import re
 
 from playwright.async_api import Locator, Page, TimeoutError as PlaywrightTimeoutError
 
+from app.automation.config import config
 from app.automation.filters import ReportRoot
+from app.automation.railmadad_wait import wait_for_railmadad_result
 from app.automation.selectors import selectors
+from app.automation.table_refresh import is_portal_loading, wait_for_table_stable
 from app.automation.utils import log_automation_event
 from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
 
-LOADING_SELECTORS = (
-    ".loading",
-    ".loader",
-    "[class*='loading']",
-    "[class*='spinner']",
-    "[class*='Loader']",
-    "#loading",
-    "#loader",
-    "text=/Loading\\.?\\.?/i",
-)
-
 HEADER_WAIT_TIMEOUT_MS = 30_000
-STABILITY_TIMEOUT_MS = 30_000
 
 RECEIVED_COLUMN = "Received"
 FEEDBACK_RECEIVED_COLUMN = "Feedback Received"
@@ -203,26 +194,33 @@ class ReceivedColumnService:
         log_automation_event(logger, "sort_click_2", column=column_header)
         await self._wait_for_table_stable(root, page)
 
-    async def _wait_for_table_stable(self, root: ReportRoot, page: Page) -> None:
-        for selector in LOADING_SELECTORS:
-            loader = root.locator(selector)
-            if await loader.count() == 0:
-                continue
-            try:
-                await loader.first.wait_for(state="hidden", timeout=STABILITY_TIMEOUT_MS)
-            except PlaywrightTimeoutError:
-                logger.debug("Loader still visible for selector %s", selector)
-
-        try:
-            await page.wait_for_load_state("domcontentloaded", timeout=min(STABILITY_TIMEOUT_MS, 10_000))
-        except PlaywrightTimeoutError:
-            logger.debug("domcontentloaded timeout while waiting for table stability")
-        # Prefer table/header readiness over full networkidle (up to 5s each sort click)
-        try:
-            table = root.locator("table").first
-            await table.wait_for(state="visible", timeout=3_000)
-        except PlaywrightTimeoutError:
-            logger.debug("Table not visible after sort click")
+    async def _wait_for_table_stable(
+        self,
+        root: ReportRoot,
+        page: Page,
+        *,
+        report_slug: str = "",
+    ) -> None:
+        result = await wait_for_railmadad_result(
+            stage="sort_received",
+            report_slug=report_slug or "unknown",
+            ready_check=lambda: wait_for_table_stable(
+                root,
+                page,
+                report_slug=report_slug,
+                stage="sort_received",
+            ),
+            is_loading=lambda: is_portal_loading(root, page),
+            normal_timeout=config.railmadad_normal_load_timeout,
+            max_timeout=config.railmadad_slow_load_timeout,
+        )
+        if not result.success:
+            log_automation_event(
+                logger,
+                "sort_table_stable_timeout",
+                report_slug=report_slug,
+                elapsed_seconds=result.elapsed_seconds,
+            )
 
     async def _verify_descending_sort(
         self,

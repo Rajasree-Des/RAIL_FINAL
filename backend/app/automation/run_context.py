@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 _current: ContextVar["RunContext | None"] = ContextVar("automation_run_context", default=None)
 
-PROCESS_CONCURRENCY = 3
+PROCESS_CONCURRENCY = 5
 
 
 def get_run_context() -> "RunContext | None":

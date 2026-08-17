@@ -11,6 +11,7 @@ from playwright.async_api import Page, TimeoutError as PlaywrightTimeoutError
 
 from app.automation.config import config
 from app.automation.reports import ReportDefinition
+from app.automation.page_wait import wait_for_navigation_settled
 from app.automation.utils import ensure_directory, log_automation_event
 from app.core.exceptions import AppException
 
@@ -97,14 +98,12 @@ class NavigationService:
 
         try:
             await page.goto(target_url, wait_until="domcontentloaded", timeout=timeout_ms)
-            try:
-                await page.wait_for_load_state("networkidle", timeout=min(timeout_ms, 15_000))
-            except PlaywrightTimeoutError:
-                logger.debug("networkidle wait skipped after navigate to %s", report.slug)
-            try:
-                await page.wait_for_selector("select, table, form", timeout=10_000)
-            except Exception:
-                pass
+            await wait_for_navigation_settled(
+                page,
+                timeout_seconds=12.0,
+                report_slug=report.slug,
+                url_fragment=report.url_fragment,
+            )
         except PlaywrightTimeoutError as exc:
             raise NavigationError(
                 f"Timed out navigating to {report.name} at {target_url}"
@@ -118,10 +117,12 @@ class NavigationService:
             # One retry — portal sometimes keeps prior report fragment briefly
             try:
                 await page.goto(target_url, wait_until="domcontentloaded", timeout=timeout_ms)
-                try:
-                    await page.wait_for_selector("select, table, form", timeout=10_000)
-                except Exception:
-                    pass
+                await wait_for_navigation_settled(
+                    page,
+                    timeout_seconds=10.0,
+                    report_slug=report.slug,
+                    url_fragment=report.url_fragment,
+                )
             except Exception:
                 pass
             if not await self.verify_report_page(page, report):

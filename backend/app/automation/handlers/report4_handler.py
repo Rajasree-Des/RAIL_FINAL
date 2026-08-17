@@ -12,7 +12,12 @@ from typing import TYPE_CHECKING, Any
 
 from app.automation.config import config
 from app.automation.generator import ReportGenerationError
-from app.automation.table_refresh import table_fingerprint, wait_for_table_refresh
+from app.automation.page_wait import wait_for_portal_settle
+from app.automation.railmadad_wait import verify_report_filters
+from app.automation.table_refresh import (
+    require_fingerprint_changed,
+    table_fingerprint,
+)
 from app.automation.report4_filters import (
     TypeConfig,
     get_report4_filters_for_type,
@@ -28,7 +33,7 @@ from app.automation.schemas import ReportResult
 from app.automation.table_extractor import TableExtractor
 from app.automation.table_sort import ReceivedSortError
 from app.automation.utils import ensure_directory, log_automation_event, resolve_report_dir
-from app.automation.wait_utils import tracked_sleep
+from app.automation.wait_utils import poll_until
 
 from .base import BaseReportHandler
 
@@ -298,7 +303,12 @@ class Report4Handler(BaseReportHandler):
                 await self._save_type_failure_artifacts(
                     page, type_config.name, attempt, last_error
                 )
-                await tracked_sleep(0.4 * attempt, reason="report4_type_retry")
+                await wait_for_portal_settle(
+                    await self.filter_service.get_report_root(page),
+                    page,
+                    reason="report4_type_retry",
+                    report_slug=report.slug,
+                )
 
         return {
             "type_name": type_config.name,
@@ -359,43 +369,30 @@ class Report4Handler(BaseReportHandler):
             old_fingerprint=old_fp[:120] if old_fp else "",
         )
 
-        await self.generator.generate_report(report_root, page)
+        await self.generator.generate_report(report_root, page, report_slug=report.slug)
 
-        # generate_report may soft-succeed while the previous type's table is still
-        # visible (Coach Cleanliness AJAX is often slow). Keep polling for a real
-        # fingerprint change before extracting — do NOT trust the Type dropdown
-        # alone (it is set before Submit).
-        refreshed = await wait_for_table_refresh(
-            report_root,
-            page,
-            old_fp,
-            report_slug=report.slug,
-            timeout_seconds=30.0,
-        )
         new_fp = await table_fingerprint(report_root)
-        if old_fp and (not refreshed) and new_fp == old_fp:
-            raise ReportGenerationError(
-                f"Report {report.slug} table did not refresh after generate"
-            )
+        require_fingerprint_changed(old_fp, new_fp, report_slug=report.slug)
+
+        filter_err = await verify_report_filters(
+            report_root,
+            {"type": type_config.portal_value, "view": "Division Wise"},
+            report_slug=report.slug,
+        )
+        if filter_err:
+            raise ReportGenerationError(filter_err)
 
         if not await self._wait_for_report_displayed(report_root, page):
             raise ReportGenerationError(
                 f"Report {report.slug} did not display after generate"
             )
 
-        if not await self._verify_type_selected(report_root, type_config.portal_value):
-            await tracked_sleep(0.5, reason="report4_type_verify_settle")
-            if not await self._verify_type_selected(report_root, type_config.portal_value):
-                raise ReportGenerationError(
-                    f"Type mismatch after refresh: expected {type_config.portal_value}"
-                )
-
         log_automation_event(
             logger,
             "report4_new_table_verified",
             type_name=type_config.name,
             attempt=attempt,
-            refreshed=bool(refreshed or (new_fp != old_fp)),
+            refreshed=True,
         )
         return report_root
 

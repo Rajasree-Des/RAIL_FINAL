@@ -17,7 +17,9 @@ from app.features.daily_summary.builder import (
     build_report6_section,
     build_report9_section,
     reconcile_summary,
+    render_summary,
 )
+from app.features.daily_summary.aggregator import build_summary_data
 from app.features.daily_summary.sources import ReportSource, RunSources
 
 
@@ -389,28 +391,76 @@ def test_full_summary_marks_missing_sections():
             ),
         },
         missing_reports=[
-            "report1",
-            "division",
             "types",
+            "bottom-report",
             "scr-train",
             "scr-station",
-            "report9",
-            "comprehensive-10-13",
         ],
         all_terminal=True,
     )
     text, counts, missing, _ = build_full_summary(sources, "14.07.2026")
+    assert "Good morning Sir/Ma'am ," in text
     assert "No SCR based train" in text
     assert "Data unavailable for the selected run." in text
     assert "types" in missing
     assert counts["train-no"] == 1
 
 
+def test_full_summary_section_order():
+    sources = RunSources(
+        run_id="run-1",
+        user_id="user-1",
+        run_status="completed",
+        reports={
+            "train-no": ReportSource(
+                slug="train-no",
+                status="success",
+                available=True,
+                rows=[
+                    {
+                        "Train No.": "1",
+                        "Train Name": "X",
+                        "Owning Zone": "Northern Railway",
+                        "Received": "1",
+                    }
+                ],
+            ),
+            "types": ReportSource(
+                slug="types",
+                status="success",
+                available=True,
+                type_datasets={},
+            ),
+            "scr-train": ReportSource(
+                slug="scr-train",
+                status="success",
+                available=True,
+                row_counts={"expected": 1, "unsatisfactory_percent": 10.0},
+                rows=[{"Type": "Security", "Div": "HYB", "Mode": "T"}],
+            ),
+            "scr-station": ReportSource(
+                slug="scr-station",
+                status="success",
+                available=True,
+                row_counts={"expected": 0},
+                rows=[],
+            ),
+        },
+        missing_reports=["bottom-report"],
+    )
+    text, _, _, _ = build_full_summary(sources, "14.07.2026")
+    bottom_idx = text.index("Bottom 20 trains")
+    cause_idx = text.index("cause wise train wise")
+    unsat_idx = text.index("Total unsatisfactory feedback")
+    station_idx = text.index("Unsatisfactory feedback at station")
+    assert bottom_idx < cause_idx < unsat_idx < station_idx
+
+
 def test_resolve_run_sources_uses_result_json_only(tmp_path, monkeypatch):
     from app.features.daily_summary.sources import resolve_run_sources
     from app.infrastructure.database.models import AutomationRunModel
 
-    storage = tmp_path / "storage" / "extracted" / "train-no"
+    storage = tmp_path / "storage" / "extracted" / "train-no" / "run-abc"
     storage.mkdir(parents=True)
     current = storage / "current.csv"
     stale = storage / "stale.csv"

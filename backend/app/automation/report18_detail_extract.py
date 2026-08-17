@@ -20,6 +20,8 @@ from app.automation.report18_filters import (
 )
 from app.automation.scr_field_map import canonicalize_scr_row
 from app.automation.utils import ensure_directory, log_automation_event
+from app.automation.config import config
+from app.automation.railmadad_wait import wait_for_railmadad_result
 from app.automation.wait_utils import poll_until, tracked_sleep
 
 if TYPE_CHECKING:
@@ -659,10 +661,6 @@ async def find_total_received_hyperlink(
 
 
 async def _wait_for_detail_view(page: "Page", *, timeout_ms: int = 30_000) -> tuple[bool, str | None]:
-    import asyncio
-    import time as time_mod
-
-    deadline = time_mod.monotonic() + (timeout_ms / 1000.0)
     detail_markers = [
         page.locator(".modal.show, .modal.fade.show, #exampleModal.show"),
         page.get_by_text(re.compile(r"List of Complaints", re.I)),
@@ -671,22 +669,24 @@ async def _wait_for_detail_view(page: "Page", *, timeout_ms: int = 30_000) -> tu
         ),
     ]
 
-    opened = False
-    last_error: str | None = None
-    while time_mod.monotonic() < deadline:
+    async def _modal_open() -> bool:
         for marker in detail_markers:
             try:
                 if await marker.count() > 0 and await marker.first.is_visible():
-                    opened = True
-                    break
-            except Exception as exc:
-                last_error = str(exc)
-        if opened:
-            break
-        await asyncio.sleep(0.2)
+                    return True
+            except Exception:
+                continue
+        return False
 
-    if not opened:
-        return False, last_error or "List of Complaints view did not become visible"
+    open_result = await wait_for_railmadad_result(
+        stage="detail_modal_open",
+        report_slug="report18",
+        ready_check=_modal_open,
+        max_timeout=timeout_ms / 1000.0,
+        normal_timeout=min(config.railmadad_normal_load_timeout, timeout_ms / 1000.0),
+    )
+    if not open_result.success:
+        return False, "List of Complaints view did not become visible"
 
     row_markers = [
         page.locator("#exampleModal.show table tbody tr td"),
@@ -695,16 +695,26 @@ async def _wait_for_detail_view(page: "Page", *, timeout_ms: int = 30_000) -> tu
             has=page.locator("th, td").filter(has_text=re.compile(r"Ref\.?\s*No", re.I))
         ).locator("tbody tr td"),
     ]
-    while time_mod.monotonic() < deadline:
+
+    async def _rows_loaded() -> bool:
         for marker in row_markers:
             try:
                 if await marker.count() > 0 and await marker.first.is_visible():
-                    return True, None
-            except Exception as exc:
-                last_error = str(exc)
-        await asyncio.sleep(0.2)
+                    return True
+            except Exception:
+                continue
+        return False
 
-    return False, last_error or "detailed complaint rows did not load"
+    rows_result = await wait_for_railmadad_result(
+        stage="detail_modal_rows",
+        report_slug="report18",
+        ready_check=_rows_loaded,
+        max_timeout=timeout_ms / 1000.0,
+        normal_timeout=min(config.railmadad_normal_load_timeout, timeout_ms / 1000.0),
+    )
+    if not rows_result.success:
+        return False, "detailed complaint rows did not load"
+    return True, None
 
 
 async def click_total_received_and_wait_detail(
@@ -840,7 +850,14 @@ async def _wait_for_modal_page_change(page: "Page", prev_first_ref: str) -> bool
         current = await _get_first_ref_on_page(page, table)
         return bool(current) and current != prev_first_ref
 
-    return await poll_until(_changed, interval_seconds=0.08, timeout_seconds=5.0, reason="vb_modal_pagination")
+    result = await wait_for_railmadad_result(
+        stage="modal_pagination",
+        report_slug="report18",
+        ready_check=_changed,
+        normal_timeout=config.railmadad_normal_load_timeout,
+        max_timeout=config.railmadad_slow_load_timeout,
+    )
+    return result.success
 
 
 async def _extract_all_modal_pages(page: "Page") -> tuple[list[dict[str, str]], list[str], int | None, str | None]:
@@ -937,10 +954,7 @@ async def _extract_all_modal_pages(page: "Page") -> tuple[list[dict[str, str]], 
 
         advanced = await _wait_for_modal_page_change(page, prev_ref)
         if not advanced:
-            await tracked_sleep(0.15, reason="vb_modal_pagination_fallback")
-            new_ref = await _get_first_ref_on_page(page, await _resolve_modal_table(page))
-            if new_ref == prev_ref:
-                break
+            break
 
     return all_rows, source_headers, modal_total, None
 

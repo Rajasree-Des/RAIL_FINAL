@@ -24,6 +24,8 @@ from app.automation.cancellation import (
 from app.automation.config import config
 from app.automation.date_range import ReportDateRange
 from app.automation.handlers import get_handler
+from app.automation.portal_recovery import recover_portal_between_reports
+from app.automation.report_errors import ReportStageError
 from app.automation.report_keys import canonicalize_report_key
 from app.automation.reports import catalog
 from app.automation.run_context import RunContext, reset_run_context, set_run_context
@@ -96,7 +98,27 @@ async def _execute_report_handler(
             raise TimeoutError(
                 f"Report {slug} extraction timed out after {config.timeout}s"
             ) from exc
-        except MisSessionError:
+        except MisSessionError as exc:
+            if attempt == 0:
+                log_automation_event(
+                    logger,
+                    "mis_session_retry",
+                    run_id=run_id,
+                    report_slug=slug,
+                    error_code=exc.status.error_code,
+                )
+                try:
+                    current_page = await ensure_live_mis_page(
+                        run_id=run_id,
+                        report_slug=slug,
+                        manager=manager,
+                        session=session,
+                        page=current_page,
+                        prefer_url_fragment=report.url_fragment,
+                    )
+                    continue
+                except MisSessionError:
+                    pass
             raise
         except Exception as exc:
             last_exc = exc
@@ -622,6 +644,13 @@ async def attach_to_railmadad(
                     session=session,
                     page=page,
                 )
+                remaining_reports = selected[selected.index(report) + 1 :]
+                if remaining_reports:
+                    page = await recover_portal_between_reports(
+                        page,
+                        session,
+                        remaining_reports[0],
+                    )
                 ctx.timing.end_report(slug, status=result.status, error=result.error)
                 await _emit_report_activity(
                     user_id,
@@ -650,6 +679,7 @@ async def attach_to_railmadad(
                     dataset_key=slug,
                     status="failed",
                     error=exc.status.error,
+                    error_code=exc.status.error_code,
                 )
                 report_results.append(failed_result)
                 ctx.timing.end_report(slug, status="failed", error="auth_lost")
@@ -674,6 +704,44 @@ async def attach_to_railmadad(
                         )
                     except Exception:
                         pass
+
+                recovered = False
+                try:
+                    page = await ensure_live_mis_page(
+                        run_id=run_id,
+                        report_slug=slug,
+                        manager=manager,
+                        session=session,
+                        page=page,
+                        prefer_url_fragment=report.url_fragment,
+                    )
+                    recovered = True
+                except MisSessionError:
+                    recovered = False
+
+                if recovered:
+                    remaining_reports = selected[selected.index(report) + 1 :]
+                    if remaining_reports:
+                        page = await recover_portal_between_reports(
+                            page,
+                            session,
+                            remaining_reports[0],
+                        )
+                    continue
+
+                remaining = selected[selected.index(report) + 1 :]
+                for pending in remaining:
+                    pending_slug = canonicalize_report_key(pending.slug)
+                    skipped = ReportResult(
+                        slug=pending_slug,
+                        dataset_key=pending_slug,
+                        status="skipped",
+                        error="MIS session lost",
+                        error_code=exc.status.error_code,
+                    )
+                    report_results.append(skipped)
+                    ctx.store_partial(skipped)
+                    ctx.timing.end_report(pending_slug, status="skipped", error="auth_lost")
                 await ctx.wait_all()
                 result = _finalize_multi_result(
                     ctx=ctx,
@@ -696,11 +764,11 @@ async def attach_to_railmadad(
             except Exception as exc:
                 logger.exception("Report %s failed", slug)
 
-                error_code = (
-                    connection_error_code(exc)
-                    if is_recoverable_connection_error(exc)
-                    else None
-                )
+                error_code = None
+                if isinstance(exc, ReportStageError):
+                    error_code = exc.code
+                elif is_recoverable_connection_error(exc):
+                    error_code = connection_error_code(exc)
                 log_automation_event(
                     logger,
                     "handler_failed",

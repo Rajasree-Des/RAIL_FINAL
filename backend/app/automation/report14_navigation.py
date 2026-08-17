@@ -17,6 +17,7 @@ from playwright.async_api import FrameLocator, Page, TimeoutError as PlaywrightT
 from app.automation.config import config
 from app.automation.navigation import url_matches_report_fragment
 from app.automation.report14_filters import REPORT14_URL_FRAGMENT
+from app.automation.page_wait import wait_for_form_context, wait_for_menu_item, wait_for_state
 from app.automation.utils import ensure_directory, log_automation_event
 from app.core.exceptions import AppException
 
@@ -324,25 +325,27 @@ async def ensure_mis_reports_expanded(page: Page) -> bool:
     log_automation_event(logger, "report14_mis_reports_click")
     await control.click(timeout=8_000)
 
-    # Wait for submenu: tab 11 becomes visible
-    for _ in range(20):
-        if await _is_tab11_visible(page):
-            log_automation_event(logger, "report14_mis_submenu_expanded")
-            return True
-        try:
-            await page.wait_for_timeout(250)
-        except Exception:
-            pass
+    if await wait_for_menu_item(
+        lambda: _is_tab11_visible(page),
+        timeout_seconds=5.0,
+        report_slug="report14",
+        menu_item=TAB11_MENU_LABEL,
+    ):
+        log_automation_event(logger, "report14_mis_submenu_expanded")
+        return True
 
     # Already expanded but click may have collapsed — second attempt if still hidden
     if not await _is_tab11_visible(page):
         control = await _find_mis_reports_control(page)
         if control is not None:
             await control.click(timeout=5_000)
-            for _ in range(12):
-                if await _is_tab11_visible(page):
-                    return True
-                await page.wait_for_timeout(250)
+            if await wait_for_menu_item(
+                lambda: _is_tab11_visible(page),
+                timeout_seconds=4.0,
+                report_slug="report14",
+                menu_item=TAB11_MENU_LABEL,
+            ):
+                return True
     return await _is_tab11_visible(page)
 
 
@@ -654,19 +657,25 @@ async def resolve_report14_form_context(page: Page) -> Page | FrameLocator | Non
 
 async def wait_for_report14_form(page: Page, *, timeout_ms: int = 25_000) -> Page | FrameLocator:
     """Poll until Train Watering (tab 11) form is visible in page or iframe."""
-    deadline_slices = max(timeout_ms // 500, 10)
     last_score = 0
     last_found: list[str] = []
-    for _ in range(deadline_slices):
+
+    async def _resolve() -> Page | FrameLocator | None:
+        nonlocal last_score, last_found
         ctx = await resolve_report14_form_context(page)
         if ctx is not None:
             return ctx
-        score, found = await _count_form_signals(page)
-        last_score, last_found = score, found
-        try:
-            await page.wait_for_timeout(500)
-        except Exception:
-            pass
+        last_score, last_found = await _count_form_signals(page)
+        return None
+
+    ctx = await wait_for_form_context(
+        _resolve,
+        timeout_seconds=timeout_ms / 1000.0,
+        report_slug="report14",
+        form_name="train_watering",
+    )
+    if ctx is not None:
+        return ctx
     log_automation_event(
         logger,
         "report14_form_wait_timeout",
@@ -772,11 +781,16 @@ async def navigate_report14_via_menu(
     _log_report14_step("Waiting for Train Watering Complaints page", tab=tab_label or TAB11_MENU_LABEL)
 
     # Wait for portal URL to switch to report22 after the menu click.
-    for _ in range(40):
-        if url_matches_report_fragment(page.url, REPORT14_URL_FRAGMENT):
-            break
-        await page.wait_for_timeout(250)
-    else:
+    url_ok = await wait_for_state(
+        lambda: url_matches_report_fragment(page.url, REPORT14_URL_FRAGMENT),
+        timeout_seconds=10.0,
+        interval_seconds=0.1,
+        reason="report14_url_fragment",
+        report_slug="report14",
+        action="menu_navigation",
+        condition=f"url:{REPORT14_URL_FRAGMENT}",
+    )
+    if not url_ok:
         await _save_nav_diagnostics(
             page,
             run_id=run_id or "na",

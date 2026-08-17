@@ -9,15 +9,16 @@ from playwright.async_api import FrameLocator, Page
 
 from app.automation.config import config
 from app.automation.filters import ReportRoot
+from app.automation.report_errors import ReportGenerationError, ReportStageError
 from app.automation.selectors import selectors
 from app.automation.table_refresh import (
+    _count_table_rows,
     table_fingerprint,
+    wait_for_adaptive_table_refresh,
     wait_for_loaders,
-    wait_for_table_refresh,
 )
 from app.automation.utils import ensure_directory, log_automation_event
 from app.automation.wait_utils import poll_until
-from app.core.exceptions import AppException
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +35,6 @@ GENERATE_BUTTON_TEXTS = (
     "Search",
     "View",
 )
-
-
-class ReportGenerationError(AppException):
-    """Raised when report generation or results verification fails."""
-
-    def __init__(self, message: str) -> None:
-        super().__init__(message=message, code="REPORT_GENERATION_ERROR")
 
 
 class ReportGeneratorService:
@@ -62,7 +56,9 @@ class ReportGeneratorService:
         await page.screenshot(path=str(path), full_page=True)
         return str(path)
 
-    async def generate_report(self, root: ReportRoot, page: Page) -> None:
+    async def generate_report(
+        self, root: ReportRoot, page: Page, *, report_slug: str = ""
+    ) -> None:
         """Click the generate/submit button and wait for the report to load."""
         button = await self._find_generate_button(root)
         if button is None:
@@ -73,42 +69,36 @@ class ReportGeneratorService:
         log_automation_event(
             logger,
             "report_generate_click",
+            report_slug=report_slug,
             button_text=button_text,
             table_fingerprint_before=(old_fp or "")[:120],
         )
         await button.click()
 
-        refreshed = await wait_for_table_refresh(
+        slug = report_slug or "unknown"
+        result = await wait_for_adaptive_table_refresh(
             root,
             page,
             old_fp,
-            timeout_seconds=min(float(config.timeout), 60.0),
+            report_slug=slug,
+            stage="result_table",
         )
-        if not refreshed:
-            if not await self._wait_until_report_surface_exists(root, page, config.timeout * 1000):
-                raise ReportGenerationError(
-                    "Report table/grid did not refresh after generate"
-                )
+        if not result.success:
+            if await self.verify_report_displayed(root):
+                new_fp = await table_fingerprint(root)
+                if not old_fp or new_fp != old_fp:
+                    return
+            code = result.error_code or f"{slug}.result_table_timeout"
+            raise ReportStageError(
+                code=code,
+                message="Report table/grid did not refresh after generate",
+                stage="result_table",
+                report_slug=slug,
+            )
 
     async def _wait_for_report_loaded(self, root: ReportRoot, page: Page) -> None:
         """Legacy hook — refresh is handled in generate_report."""
         await wait_for_loaders(root, page)
-
-    async def _wait_until_report_surface_exists(
-        self, root: ReportRoot, page: Page, timeout_ms: int
-    ) -> bool:
-        deadline_seconds = timeout_ms / 1000
-
-        async def _visible() -> bool:
-            await wait_for_loaders(root, page, timeout_ms=2_000)
-            return await self.verify_report_displayed(root)
-
-        return await poll_until(
-            _visible,
-            interval_seconds=0.1,
-            timeout_seconds=min(deadline_seconds, 30.0),
-            reason="report_surface_poll",
-        )
 
     async def _wait_for_loading_indicators(self, root: ReportRoot, page: Page, timeout_ms: int) -> None:
         await wait_for_loaders(root, page, timeout_ms=min(timeout_ms, 8_000))
@@ -213,15 +203,7 @@ class ReportGeneratorService:
 
     async def count_rows(self, root: ReportRoot) -> int:
         """Best-effort count of rows in the report results table."""
-        table = root.locator(selectors.report1_table).first
-        if await table.count() == 0:
-            table = root.locator(selectors.report1_grid).first
-        if await table.count() == 0:
-            return 0
-        rows = table.locator("tbody tr")
-        if await rows.count() == 0:
-            rows = table.locator("tr")
-        return await rows.count()
+        return await _count_table_rows(root)
 
     async def verify_report_displayed(self, root: ReportRoot) -> bool:
         table = root.locator(selectors.report1_table).first
@@ -232,6 +214,32 @@ class ReportGeneratorService:
             if await target.is_visible():
                 return True
         return await self.count_rows(root) > 0
+
+    async def wait_for_report_displayed(
+        self,
+        root: ReportRoot,
+        page: Page,
+        *,
+        timeout_seconds: float = 30.0,
+        report_slug: str = "",
+        min_data_rows: int = 1,
+    ) -> bool:
+        """Poll until the results table/grid is visible with data after Submit."""
+
+        async def _visible() -> bool:
+            await wait_for_loaders(root, page, timeout_ms=2_000)
+            if not await self.verify_report_displayed(root):
+                return False
+            if min_data_rows <= 0:
+                return True
+            return await _count_table_rows(root) >= min_data_rows
+
+        return await poll_until(
+            _visible,
+            interval_seconds=0.1,
+            timeout_seconds=timeout_seconds,
+            reason="report_display_poll",
+        )
 
     async def log_report_metadata(self, page: Page, row_count: int) -> None:
         try:
@@ -245,3 +253,6 @@ class ReportGeneratorService:
             page_title=page_title,
             row_count=row_count,
         )
+
+
+__all__ = ["ReportGenerationError", "ReportStageError", "ReportGeneratorService"]

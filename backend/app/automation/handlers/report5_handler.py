@@ -23,7 +23,8 @@ from app.automation.scr_field_map import (
     verify_scr_csv,
 )
 from app.automation.utils import ensure_directory, log_automation_event, resolve_report_dir, resolve_run_scoped_dir
-from app.automation.wait_utils import poll_until, tracked_sleep
+from app.automation.railmadad_wait import wait_for_railmadad_result
+from app.automation.wait_utils import poll_until
 from app.automation.run_context import get_run_context
 
 from .base import BaseReportHandler
@@ -603,15 +604,17 @@ class Report5Handler(BaseReportHandler):
                 "a:has-text('Next'):not(.disabled)"
             )
             if await next_button.count() > 0 and await next_button.first.is_visible():
+                prev_ref = await self._get_first_modal_ref(page)
                 await next_button.first.click()
-                advanced = await poll_until(
-                    lambda: self._modal_has_rows(page),
-                    interval_seconds=0.08,
-                    timeout_seconds=3.0,
-                    reason="scr_modal_pagination",
+                advanced = await wait_for_railmadad_result(
+                    stage="scr_modal_pagination",
+                    report_slug="scr-train",
+                    ready_check=lambda: self._modal_page_changed(page, prev_ref),
+                    normal_timeout=config.railmadad_normal_load_timeout,
+                    max_timeout=config.railmadad_slow_load_timeout,
                 )
-                if not advanced:
-                    await tracked_sleep(0.08, reason="scr_modal_pagination_fallback")
+                if not advanced.success:
+                    break
             else:
                 break
 
@@ -619,6 +622,32 @@ class Report5Handler(BaseReportHandler):
 
     async def _modal_has_rows(self, page: "Page") -> bool:
         return (await self._modal_row_count(page)) > 0
+
+    async def _get_first_modal_ref(self, page: "Page") -> str:
+        try:
+            ref = await page.evaluate(
+                """() => {
+                  const row = document.querySelector(
+                    '#exampleModal.show table tbody tr, .modal.show table tbody tr'
+                  );
+                  if (!row) return '';
+                  const cells = row.querySelectorAll('td');
+                  for (const cell of cells) {
+                    const text = (cell.textContent || '').trim();
+                    if (/^\\d{6,}/.test(text)) return text;
+                  }
+                  return (cells[0]?.textContent || '').trim();
+                }"""
+            )
+            return str(ref or "")
+        except Exception:
+            return ""
+
+    async def _modal_page_changed(self, page: "Page", prev_ref: str) -> bool:
+        if not await self._modal_has_rows(page):
+            return False
+        current = await self._get_first_modal_ref(page)
+        return bool(current) and current != prev_ref
 
     async def _modal_row_count(self, page: "Page") -> int:
         try:

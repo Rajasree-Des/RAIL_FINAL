@@ -7,6 +7,8 @@ import logging
 import time
 from typing import Any
 
+from datetime import date
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.automation.utils import previous_day_report_date
@@ -20,10 +22,27 @@ from app.features.daily_summary.schemas import (
     DailySummaryListResponse,
     DailySummaryResponse,
 )
-from app.features.daily_summary.sources import resolve_run_sources
+from app.features.daily_summary.sources import RunSources, resolve_run_sources
 from app.infrastructure.database.models import AutomationRunModel, GeneratedSummaryModel
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_report_date(
+    run: AutomationRunModel,
+    sources: RunSources | None = None,
+) -> str:
+    """Resolve authoritative report date (DD.MM.YYYY) for the automation run."""
+    if run.date_from is not None:
+        return run.date_from.strftime("%d.%m.%Y")
+    if sources is not None:
+        bottom = sources.reports.get("bottom-report")
+        if bottom and bottom.bottom_report and bottom.bottom_report.date_from:
+            try:
+                return date.fromisoformat(bottom.bottom_report.date_from).strftime("%d.%m.%Y")
+            except ValueError:
+                pass
+    return previous_day_report_date(fmt="%d.%m.%Y")
 
 
 class DailySummaryService:
@@ -49,18 +68,6 @@ class DailySummaryService:
         if run.created_by and run.created_by != user_id:
             raise NotFoundError("AutomationRun", run_id)
 
-        date_str = report_date or previous_day_report_date(fmt="%d.%m.%Y")
-
-        await emit_activity(
-            user_id=user_id,
-            action="SUMMARY_GENERATION_STARTED",
-            message=f"Daily summary generation started for run {run_id}",
-            status="info",
-            run_id=run_id,
-            metadata={"report_date": date_str, "regenerated": regenerated},
-            dedupe_key=f"summary_start:{run_id}:{int(t0)}" if regenerated else f"summary_start:{run_id}",
-        )
-
         try:
             sources = resolve_run_sources(run)
             if not sources.all_terminal and run.status not in {
@@ -72,7 +79,23 @@ class DailySummaryService:
                     "Summary can only be generated after the run reaches a terminal status"
                 )
 
-            text, row_counts, missing, notes = build_full_summary(sources, date_str)
+            date_str = report_date or resolve_report_date(run, sources)
+
+            await emit_activity(
+                user_id=user_id,
+                action="SUMMARY_GENERATION_STARTED",
+                message=f"Daily summary generation started for run {run_id}",
+                status="info",
+                run_id=run_id,
+                metadata={"report_date": date_str, "regenerated": regenerated},
+                dedupe_key=f"summary_start:{run_id}:{int(t0)}" if regenerated else f"summary_start:{run_id}",
+            )
+
+            text, row_counts, missing, notes = build_full_summary(
+                sources,
+                date_str,
+                run_date_from=run.date_from,
+            )
             # Reconciliation notes are appended inside build_full_summary; persist all notes.
             source_reports = [
                 slug
@@ -161,20 +184,21 @@ class DailySummaryService:
             raise
         except Exception as exc:
             logger.exception("daily_summary_generation_failed run_id=%s", run_id)
+            fail_date = report_date or previous_day_report_date(fmt="%d.%m.%Y")
             await emit_activity(
                 user_id=user_id,
                 action="SUMMARY_GENERATION_FAILED",
                 message=str(exc)[:500],
                 status="error",
                 run_id=run_id,
-                metadata={"report_date": date_str},
+                metadata={"report_date": fail_date},
                 dedupe_key=f"summary_fail:{run_id}",
             )
             # Persist failed stub so UI can show error
             row = await self.repository.upsert(
                 run_id=run_id,
                 user_id=user_id,
-                report_date=date_str,
+                report_date=fail_date,
                 content="",
                 status="failed",
                 metadata={"error": str(exc)[:500]},

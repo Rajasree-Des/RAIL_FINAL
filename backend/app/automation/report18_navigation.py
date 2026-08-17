@@ -21,6 +21,7 @@ from app.automation.report18_filters import (
     REPORT18_TAB_LABEL,
     REPORT18_URL_FRAGMENT,
 )
+from app.automation.page_wait import wait_for_form_context, wait_for_menu_item
 from app.automation.utils import ensure_directory, log_automation_event
 from app.core.exceptions import AppException
 
@@ -220,23 +221,26 @@ async def ensure_mis_reports_expanded(page: Page) -> bool:
     log_automation_event(logger, "report18_mis_reports_click")
     await control.click(timeout=8_000)
 
-    for _ in range(20):
-        if await _is_tab18_visible(page):
-            log_automation_event(logger, "report18_mis_submenu_expanded")
-            return True
-        try:
-            await page.wait_for_timeout(250)
-        except Exception:
-            pass
+    if await wait_for_menu_item(
+        lambda: _is_tab18_visible(page),
+        timeout_seconds=5.0,
+        report_slug="report18",
+        menu_item=TAB18_MENU_LABEL,
+    ):
+        log_automation_event(logger, "report18_mis_submenu_expanded")
+        return True
 
     if not await _is_tab18_visible(page):
         control = await _find_mis_reports_control(page)
         if control is not None:
             await control.click(timeout=5_000)
-            for _ in range(12):
-                if await _is_tab18_visible(page):
-                    return True
-                await page.wait_for_timeout(250)
+            if await wait_for_menu_item(
+                lambda: _is_tab18_visible(page),
+                timeout_seconds=4.0,
+                report_slug="report18",
+                menu_item=TAB18_MENU_LABEL,
+            ):
+                return True
     return await _is_tab18_visible(page)
 
 
@@ -389,19 +393,25 @@ async def resolve_report18_form_context(page: Page) -> Page | FrameLocator | Non
 
 
 async def wait_for_report18_form(page: Page, *, timeout_ms: int = 25_000) -> Page | FrameLocator:
-    deadline_slices = max(timeout_ms // 500, 10)
     last_score = 0
     last_found: list[str] = []
-    for _ in range(deadline_slices):
+
+    async def _resolve() -> Page | FrameLocator | None:
+        nonlocal last_score, last_found
         ctx = await resolve_report18_form_context(page)
         if ctx is not None:
             return ctx
-        score, found = await _count_form_signals(page)
-        last_score, last_found = score, found
-        try:
-            await page.wait_for_timeout(500)
-        except Exception:
-            pass
+        last_score, last_found = await _count_form_signals(page)
+        return None
+
+    ctx = await wait_for_form_context(
+        _resolve,
+        timeout_seconds=timeout_ms / 1000.0,
+        report_slug="report18",
+        form_name="vande_bharat",
+    )
+    if ctx is not None:
+        return ctx
     log_automation_event(
         logger,
         "report18_form_wait_timeout",
