@@ -31,7 +31,7 @@ from app.automation.date_range import date_range_for_processing
 from app.automation.formatting.artifact_titles import build_artifact_main_title
 from app.automation.formatting.excel_print import apply_uniform_center_alignment
 from app.automation.formatting.pdf_fonts import ensure_pdf_unicode_fonts, pdf_font_bold, pdf_font_regular
-from app.automation.formatting.pdf_table import SAFE_MARGIN_PT, fit_column_widths, preferred_column_widths
+from app.automation.formatting.pdf_table import SAFE_MARGIN_PT
 from app.automation.formatting.text_pipeline import normalize_report_title
 from app.automation.processing.base import ProcessingResult
 from app.automation.processing.report9_output_columns import (
@@ -68,6 +68,7 @@ TOTAL_FILL = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="so
 
 _PDF_MARGIN_PT = min(SAFE_MARGIN_PT, 14.0)
 _PDF_SECTION_GAP_PT = 8.0
+_REPORT9_PDF_COL_WIDTHS = [8, 22, 12, 12]
 
 
 def _escape_paragraph_xml(text: str) -> str:
@@ -463,8 +464,9 @@ class Report9Processor:
             if section_idx < len(sections) - 1:
                 current_row += 1
 
-        for col_idx, width in enumerate([8, 22, 12, 12], start=1):
-            worksheet.column_dimensions[chr(64 + col_idx)].width = width
+        equal_col_width = 14
+        for col_idx in range(1, col_count + 1):
+            worksheet.column_dimensions[chr(64 + col_idx)].width = equal_col_width
 
         apply_uniform_center_alignment(worksheet)
 
@@ -520,12 +522,10 @@ class Report9Processor:
             table_data.extend([list(r) for r in section.rows])
             table_data.append(list(section.total_row))
 
-            preferred = preferred_column_widths(
-                table_data,
-                font_size=8,
-                headers=list(section.headers),
-            )
-            col_widths = fit_column_widths(preferred, usable_width)
+            col_width_total = sum(_REPORT9_PDF_COL_WIDTHS)
+            col_widths = [
+                usable_width * width / col_width_total for width in _REPORT9_PDF_COL_WIDTHS
+            ]
             table = LongTable(table_data, colWidths=col_widths, repeatRows=1)
             table.setStyle(
                 TableStyle(
